@@ -40,9 +40,22 @@ interface EventItemProps {
   event: CalendarEvent;
   isPool?: boolean;
   isDragging?: boolean;
+  onEdit?: (event: CalendarEvent) => void;
 }
 
-const EventItem: React.FC<EventItemProps> = ({ event, isPool = false, isDragging = false }) => {
+const EventItem: React.FC<EventItemProps> = ({
+  event,
+  isPool = false,
+  isDragging = false,
+  onEdit
+}) => {
+  const [mouseState, setMouseState] = React.useState({
+    isDown: false,
+    startX: 0,
+    startY: 0,
+    moved: false
+  });
+
   const {attributes, listeners, setNodeRef, transform} = useDraggable({
     id: event.id,
     data: {
@@ -50,6 +63,38 @@ const EventItem: React.FC<EventItemProps> = ({ event, isPool = false, isDragging
       type: event.type
     }
   });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setMouseState({
+      isDown: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (mouseState.isDown) {
+      const dx = Math.abs(e.clientX - mouseState.startX);
+      const dy = Math.abs(e.clientY - mouseState.startY);
+      if (dx > 3 || dy > 3) {
+        setMouseState(prev => ({ ...prev, moved: true }));
+      }
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (mouseState.isDown && !mouseState.moved) {
+      onEdit?.(event);
+    }
+
+    setMouseState({
+      isDown: false,
+      startX: 0,
+      startY: 0,
+      moved: false
+    });
+  };
 
   const getEventPosition = () => {
     if (isPool || isDragging) return {};
@@ -83,8 +128,17 @@ const EventItem: React.FC<EventItemProps> = ({ event, isPool = false, isDragging
       $isPool={isPool}
       $isDragging={isDragging}
       style={style}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={() => setMouseState({
+        isDown: false,
+        startX: 0,
+        startY: 0,
+        moved: false
+      })}
       {...attributes}
-      {...listeners}
+      data-testid={`event-item-${event.id}`}
     >
       <div>{event.title}</div>
       {!isPool && event.startTime && (

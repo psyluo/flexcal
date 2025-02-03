@@ -30,9 +30,11 @@ const PoolCell = styled.div<{ $isOver?: boolean }>`
 interface PoolRowProps {
   events: CalendarEvent[];
   dates: Date[];
+  onEditEvent: (event: CalendarEvent) => void;
 }
 
-const PoolRow: React.FC<PoolRowProps> = ({ events, dates }) => {
+const PoolRow: React.FC<PoolRowProps> = ({ events, dates, onEditEvent }) => {
+  console.log('PoolRow: received onEditEvent prop:', !!onEditEvent);
   return (
     <PoolContainer>
       <PoolLabel>Pool</PoolLabel>
@@ -58,6 +60,10 @@ const PoolRow: React.FC<PoolRowProps> = ({ events, dates }) => {
                   key={event.id} 
                   event={event} 
                   isPool={true}
+                  onEdit={(e) => {
+                    console.log('PoolRow: onEdit called', e);
+                    onEditEvent(e);
+                  }}
                 />
               ))}
           </PoolCell>

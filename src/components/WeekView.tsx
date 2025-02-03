@@ -98,9 +98,22 @@ const TimeBlockCell = styled.div<{ $isOver?: boolean }>`
 interface WeekViewProps {
   events: CalendarEvent[];
   dates: Date[];
+  onEditEvent: (event: CalendarEvent) => void;
 }
 
-const WeekView: React.FC<WeekViewProps> = ({ events, dates }) => {
+const WeekView: React.FC<WeekViewProps> = ({ events, dates, onEditEvent }) => {
+  console.log('WeekView: rendering with onEditEvent:', !!onEditEvent);
+
+  const handleEventEdit = (event: CalendarEvent) => {
+    console.log('WeekView: handleEventEdit called', event);
+    try {
+      onEditEvent(event);
+      console.log('WeekView: onEditEvent called successfully');
+    } catch (error) {
+      console.error('WeekView: error calling onEditEvent', error);
+    }
+  };
+
   // 生成48个半小时块
   const timeBlocks: TimeBlock[] = Array.from({ length: 48 }, (_, index) => {
     const block = {
@@ -212,6 +225,7 @@ const WeekView: React.FC<WeekViewProps> = ({ events, dates }) => {
                   <EventItem 
                     key={event.id} 
                     event={event}
+                    onEdit={onEditEvent}
                   />
                 ))}
             </DayColumn>

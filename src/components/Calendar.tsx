@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { startOfWeek, addDays, format } from 'date-fns';
 import { 
@@ -14,6 +14,7 @@ import WeekView from './WeekView';
 import PoolRow from './PoolRow';
 import EventItem from './EventItem';
 import { POOL_HEIGHT, HOUR_HEIGHT, MINUTES_SNAP } from '../constants';
+import EventDialog from './EventDialog';
 
 export const HEADER_HEIGHT = 50; // 日期行高度
 
@@ -62,6 +63,7 @@ const Calendar: React.FC = () => {
     }
   ]);
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
 
   // 使用 weekStartsOn 确保周一开始
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -136,31 +138,63 @@ const Calendar: React.FC = () => {
     setActiveEvent(null);
   };
 
+  const handleEditEvent = (event: CalendarEvent) => {
+    setEditingEvent(event);
+  };
+
+  const handleSaveEvent = (updatedEvent: CalendarEvent) => {
+    setEvents(prevEvents =>
+      prevEvents.map(evt =>
+        evt.id === updatedEvent.id ? updatedEvent : evt
+      )
+    );
+    setEditingEvent(null);
+  };
+
+  const handleDeleteEvent = (eventId: string) => {
+    setEvents(prevEvents => prevEvents.filter(evt => evt.id !== eventId));
+    setEditingEvent(null);
+  };
+
   return (
-    <DndContext 
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <CalendarContainer>
-        <PoolRow 
-          events={events.filter(e => e.type === 'pool')}
-          dates={weekDays}
+    <div style={{ position: 'relative' }}>
+      <DndContext 
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <CalendarContainer>
+          <PoolRow 
+            events={events.filter(e => e.type === 'pool')}
+            dates={weekDays}
+            onEditEvent={handleEditEvent}
+          />
+          <WeekView 
+            events={events.filter(e => e.type === 'scheduled')}
+            dates={weekDays}
+            onEditEvent={handleEditEvent}
+          />
+          <DragOverlay>
+            {activeEvent && (
+              <EventItem 
+                event={activeEvent}
+                isPool={activeEvent.type === 'pool'}
+                isDragging={true}
+              />
+            )}
+          </DragOverlay>
+        </CalendarContainer>
+      </DndContext>
+
+      {editingEvent && (
+        <EventDialog
+          key={editingEvent.id}
+          event={editingEvent}
+          onClose={() => setEditingEvent(null)}
+          onSave={handleSaveEvent}
+          onDelete={handleDeleteEvent}
         />
-        <WeekView 
-          events={events.filter(e => e.type === 'scheduled')}
-          dates={weekDays}
-        />
-        <DragOverlay>
-          {activeEvent && (
-            <EventItem 
-              event={activeEvent}
-              isPool={activeEvent.type === 'pool'}
-              isDragging={true}
-            />
-          )}
-        </DragOverlay>
-      </CalendarContainer>
-    </DndContext>
+      )}
+    </div>
   );
 };
 
