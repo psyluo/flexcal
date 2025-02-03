@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
-import { format, isSameDay } from 'date-fns';
-import { CalendarEvent } from '../types';
+import { format, isSameDay, parseISO } from 'date-fns';
+import { CalendarEvent, TimeBlock } from '../types';
 import EventItem from './EventItem';
 import { HOUR_HEIGHT, HEADER_HEIGHT } from '../constants';
 import { useDroppable } from '@dnd-kit/core';
@@ -56,23 +56,15 @@ const DayColumn = styled.div<{ $isOver?: boolean }>`
 `;
 
 const TimeSlot = styled.div`
-  height: ${HOUR_HEIGHT}px;
-  box-sizing: border-box; // 确保边框和内边距包含在高度内
-  border-bottom: 1px solid #f0f0f0;
-  padding: 4px 8px;
+  height: ${HOUR_HEIGHT / 2}px;
+  box-sizing: border-box;
+  border-bottom: 1px dashed #f0f0f0;
+  padding: 2px 8px;
   font-size: 12px;
   color: #666;
   position: relative;
-  
-  &::after {
-    content: '';
-    position: absolute;
-    left: 60px;
-    right: 0;
-    top: 0;
-    border-top: 1px solid #f0f0f0;
-    z-index: 1;
-  }
+  display: flex;
+  align-items: center;
 `;
 
 const TimeMarker = styled.div<{ $top: number; color?: string }>`
@@ -86,13 +78,73 @@ const TimeMarker = styled.div<{ $top: number; color?: string }>`
   z-index: 2;
 `;
 
+const TimeBlockCell = styled.div<{ $isOver?: boolean }>`
+  height: ${HOUR_HEIGHT / 2}px;
+  box-sizing: border-box;
+  border-bottom: 1px dashed #f0f0f0;
+  position: relative;
+  background-color: ${props => props.$isOver ? '#f5f5f5' : 'transparent'};
+  transition: background-color 0.2s;
+  padding: 0;
+  margin: 0;
+  z-index: 1;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #f8f8f8;
+  }
+`;
+
 interface WeekViewProps {
   events: CalendarEvent[];
   dates: Date[];
 }
 
 const WeekView: React.FC<WeekViewProps> = ({ events, dates }) => {
-  const hours = Array.from({ length: 24 }, (_, i) => i);
+  // 生成48个半小时块
+  const timeBlocks: TimeBlock[] = Array.from({ length: 48 }, (_, index) => {
+    const block = {
+      hour: Math.floor(index / 2),
+      minute: (index % 2) * 30
+    };
+    
+    // 添加调试信息
+    console.log(`Time block ${index}:`, {
+      index,
+      hour: block.hour,
+      minute: block.minute,
+      displayTime: `${block.hour}:${block.minute}`
+    });
+    
+    return block;
+  });
+
+  // 格式化时间显示
+  const formatTimeLabel = (block: TimeBlock): string => {
+    const hour = block.hour.toString().padStart(2, '0');
+    const minute = block.minute.toString().padStart(2, '0');
+    return `${hour}:${minute}`;
+  };
+
+  const handleTimeBlockClick = (block: TimeBlock, index: number) => {
+    console.log('Clicked time block:', {
+      index,
+      hour: block.hour,
+      minute: block.minute,
+      formattedTime: `${block.hour.toString().padStart(2, '0')}:${block.minute.toString().padStart(2, '0')}`,
+      position: `${index * (HOUR_HEIGHT / 2)}px`
+    });
+  };
+
+  const handleTimeBlockHover = (block: TimeBlock, index: number) => {
+    console.log('Hover time block:', {
+      index,
+      hour: block.hour,
+      minute: block.minute,
+      formattedTime: `${block.hour.toString().padStart(2, '0')}:${block.minute.toString().padStart(2, '0')}`,
+      position: `${index * (HOUR_HEIGHT / 2)}px`
+    });
+  };
 
   return (
     <WeekViewContainer>
@@ -108,51 +160,54 @@ const WeekView: React.FC<WeekViewProps> = ({ events, dates }) => {
       
       <TimeGridContainer className="time-grid-container">
         <TimeColumn>
-          {hours.map(hour => (
-            <TimeSlot key={hour}>
-              {`${hour.toString().padStart(2, '0')}:00`}
+          {timeBlocks.map((block, index) => (
+            <TimeSlot key={index}>
+              {formatTimeLabel(block)}
             </TimeSlot>
           ))}
         </TimeColumn>
         
         {dates.map(date => {
           const dropId = `day-${date.toISOString()}`;
-          const { setNodeRef, isOver } = useDroppable({
-            id: dropId,
-            data: {
-              date,
-              type: 'scheduled'
-            }
-          });
-
-          const handleRef = (node: HTMLDivElement | null) => {
-            setNodeRef(node);
-            if (node) {
-              // 获取时间网格容器
-              const timeGridContainer = node.closest('.time-grid-container');
-              const timeGridRect = timeGridContainer?.getBoundingClientRect() || { top: 0, left: 0 };
-              const rect = node.getBoundingClientRect();
-              
-              node.dataset.id = dropId;
-              node.dataset.rect = JSON.stringify({
-                // 存储相对于时间网格的位置
-                gridTop: timeGridRect.top,
-                columnTop: rect.top,
-                height: rect.height
-              });
-            }
-          };
-
+          
           return (
-            <DayColumn 
-              key={date.toISOString()} 
-              ref={handleRef}
-              $isOver={isOver}
-            >
-              <TimeMarker $top={0} color="red" /> {/* 0小时 */}
-              <TimeMarker $top={1} color="green" /> {/* 1小时 */}
+            <DayColumn key={date.toISOString()}>
+              {timeBlocks.map((block, index) => {
+                const { setNodeRef, isOver } = useDroppable({
+                  id: `${dropId}-${block.hour}-${block.minute}`,
+                  data: {
+                    date,
+                    type: 'scheduled',
+                    timeBlock: block,
+                    blockIndex: index
+                  }
+                });
+
+                return (
+                  <TimeBlockCell
+                    key={index}
+                    ref={setNodeRef}
+                    $isOver={isOver}
+                    data-hour={block.hour}
+                    data-minute={block.minute}
+                    data-index={index}
+                    onClick={() => handleTimeBlockClick(block, index)}
+                    onMouseEnter={() => handleTimeBlockHover(block, index)}
+                    style={{
+                      position: 'absolute',
+                      top: `${index * (HOUR_HEIGHT / 2)}px`,
+                      left: 0,
+                      right: 0,
+                      pointerEvents: 'all'
+                    }}
+                  />
+                );
+              })}
               {events
-                .filter(event => isSameDay(new Date(event.date), date))
+                .filter(event => {
+                  const eventDate = new Date(event.date);
+                  return isSameDay(eventDate, date);
+                })
                 .map(event => (
                   <EventItem 
                     key={event.id} 

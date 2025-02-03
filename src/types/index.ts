@@ -1,11 +1,17 @@
 export type EventType = 'pool' | 'scheduled';
 
+// 添加时间块相关的类型
+export interface TimeBlock {
+  hour: number;    // 24小时制
+  minute: number;  // 0-59
+}
+
 export interface CalendarEvent {
   id: string;
   title: string;
-  date: Date;
-  startTime?: string;  // HH:mm format
-  duration?: number;   // in minutes
+  date: Date;      // 存储完整的日期对象
+  startTime?: string;  // 24小时制，HH:mm 格式
+  duration?: number;   // 分钟数
   endTime?: string;   // HH:mm format
   type: EventType;
 }

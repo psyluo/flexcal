@@ -39,10 +39,11 @@ const EventItemContainer = styled.div<EventItemContainerProps>`
 interface EventItemProps {
   event: CalendarEvent;
   isPool?: boolean;
+  isDragging?: boolean;
 }
 
-const EventItem: React.FC<EventItemProps> = ({ event, isPool = false }) => {
-  const {attributes, listeners, setNodeRef, transform, isDragging} = useDraggable({
+const EventItem: React.FC<EventItemProps> = ({ event, isPool = false, isDragging = false }) => {
+  const {attributes, listeners, setNodeRef, transform} = useDraggable({
     id: event.id,
     data: {
       event,
@@ -51,17 +52,19 @@ const EventItem: React.FC<EventItemProps> = ({ event, isPool = false }) => {
   });
 
   const getEventPosition = () => {
-    if (isPool) return {};
+    if (isPool || isDragging) return {};
     
     const startMinutes = event.startTime ? 
       parseInt(event.startTime.split(':')[0]) * 60 + parseInt(event.startTime.split(':')[1]) 
       : 0;
     
-    const duration = event.duration || 60; // default 1 hour
+    const duration = event.duration || 30;
+    const blockHeight = HOUR_HEIGHT / 2;
+    const blockIndex = startMinutes / 30;
     
     return {
-      top: (startMinutes / 60) * HOUR_HEIGHT,
-      height: (duration / 60) * HOUR_HEIGHT
+      top: blockIndex * blockHeight,
+      height: (duration / 30) * blockHeight
     };
   };
 
@@ -69,7 +72,7 @@ const EventItem: React.FC<EventItemProps> = ({ event, isPool = false }) => {
 
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    opacity: isDragging ? 0.8 : undefined,
+    opacity: isDragging ? 0.5 : undefined,
   } : undefined;
 
   return (

@@ -9,7 +9,7 @@ import {
   DragStartEvent,
   DragMoveEvent,
 } from '@dnd-kit/core';
-import { CalendarEvent } from '../types';
+import { CalendarEvent, TimeBlock } from '../types';
 import WeekView from './WeekView';
 import PoolRow from './PoolRow';
 import EventItem from './EventItem';
@@ -33,11 +33,15 @@ const PoolContainer = styled.div`
 `;
 
 const Calendar: React.FC = () => {
+  // 确保使用本地时间
+  const today = new Date();
+  const [currentDate] = useState(today);
+  
   const [events, setEvents] = useState<CalendarEvent[]>([
     {
       id: '1',
       title: 'Meeting with Team',
-      date: new Date(),
+      date: today, // 使用同一个时间对象
       startTime: '10:00',
       duration: 60,
       type: 'scheduled'
@@ -45,7 +49,7 @@ const Calendar: React.FC = () => {
     {
       id: '2',
       title: 'Lunch Break',
-      date: new Date(),
+      date: today,
       startTime: '12:00',
       duration: 60,
       type: 'scheduled'
@@ -53,19 +57,20 @@ const Calendar: React.FC = () => {
     {
       id: '3',
       title: 'Review PR',
-      date: new Date(),
+      date: today,
       type: 'pool'
     }
   ]);
-  const [currentDate] = useState(new Date());
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
 
+  // 使用 weekStartsOn 确保周一开始
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
-    setActiveEvent(active.data.current?.event);
+    const draggedEvent = active.data.current?.event;
+    setActiveEvent(draggedEvent);
   };
 
   const snapToGrid = (minutes: number): number => {
@@ -93,69 +98,42 @@ const Calendar: React.FC = () => {
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    setActiveEvent(null);
     const { active, over } = event;
     
-    if (!over) return;
+    if (!over) {
+      setActiveEvent(null);
+      return; // 如果没有有效的放置位置，直接返回，保持原始事件
+    }
 
     const draggedEvent = active.data.current?.event as CalendarEvent;
     const targetDate = over.data.current?.date as Date;
     const targetType = over.data.current?.type as 'pool' | 'scheduled';
+    const timeBlock = over.data.current?.timeBlock as TimeBlock;
 
     if (draggedEvent && targetDate) {
-      const newEvent = { ...draggedEvent, date: targetDate, type: targetType };
+      const newEvent = { 
+        ...draggedEvent, 
+        date: new Date(targetDate),
+        type: targetType 
+      };
       
-      if (targetType === 'scheduled') {
-        const element = document.querySelector(`[data-id="${over.id}"]`);
-        
-        if (element) {
-          // 获取时间网格容器
-          const timeGridContainer = element.closest('.time-grid-container');
-          if (timeGridContainer) {
-            // 获取鼠标相对于时间网格容器的位置
-            const containerRect = timeGridContainer.getBoundingClientRect();
-            const scrollTop = timeGridContainer.scrollTop;
-            
-            // 计算Y坐标（减去头部高度）
-            const y = event.activatorEvent.clientY - containerRect.top + scrollTop;
-            
-            // 转换为小时
-            const hours = Math.floor(y / HOUR_HEIGHT);
-            // 转换为分钟
-            const minutes = Math.floor((y % HOUR_HEIGHT) / HOUR_HEIGHT * 60);
-            // 对齐到30分钟
-            const alignedMinutes = Math.round(minutes / 30) * 30;
-            
-            // 格式化时间
-            const formattedHours = hours.toString().padStart(2, '0');
-            const formattedMinutes = alignedMinutes.toString().padStart(2, '0');
-            
-            newEvent.startTime = `${formattedHours}:${formattedMinutes}`;
-            newEvent.duration = draggedEvent.duration || 60;
-            
-            console.log('Time calculation:', {
-              mouseY: event.activatorEvent.clientY,
-              containerTop: containerRect.top,
-              scrollTop,
-              y,
-              hours,
-              minutes,
-              alignedMinutes,
-              finalTime: newEvent.startTime
-            });
-          }
-        }
+      if (targetType === 'scheduled' && timeBlock) {
+        newEvent.startTime = `${timeBlock.hour.toString().padStart(2, '0')}:${timeBlock.minute.toString().padStart(2, '0')}`;
+        newEvent.duration = draggedEvent.duration || 30;
       } else {
         delete newEvent.startTime;
         delete newEvent.duration;
       }
 
+      // 更新事件列表，替换原始事件
       setEvents(prevEvents => 
         prevEvents.map(evt => 
           evt.id === draggedEvent.id ? newEvent : evt
         )
       );
     }
+    
+    setActiveEvent(null);
   };
 
   return (
@@ -172,21 +150,14 @@ const Calendar: React.FC = () => {
           events={events.filter(e => e.type === 'scheduled')}
           dates={weekDays}
         />
-        <DragOverlay dropAnimation={{
-          sideEffects: defaultDropAnimationSideEffects({
-            styles: {
-              active: {
-                opacity: '0.5'
-              }
-            }
-          })
-        }}>
-          {activeEvent ? (
+        <DragOverlay>
+          {activeEvent && (
             <EventItem 
               event={activeEvent}
               isPool={activeEvent.type === 'pool'}
+              isDragging={true}
             />
-          ) : null}
+          )}
         </DragOverlay>
       </CalendarContainer>
     </DndContext>
