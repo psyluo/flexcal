@@ -100,9 +100,10 @@ interface WeekViewProps {
   dates: Date[];
   onEditEvent: (event: CalendarEvent) => void;
   onCreateEvent: (date: Date, timeBlock?: TimeBlock) => void;
+  onResizeEvent: (event: CalendarEvent, newStartTime?: string, newDuration?: number) => void;
 }
 
-const WeekView: React.FC<WeekViewProps> = ({ events, dates, onEditEvent, onCreateEvent }) => {
+const WeekView: React.FC<WeekViewProps> = ({ events, dates, onEditEvent, onCreateEvent, onResizeEvent }) => {
   console.log('WeekView: rendering with onEditEvent:', !!onEditEvent);
 
   // 生成48个半小时块
@@ -211,6 +212,7 @@ const WeekView: React.FC<WeekViewProps> = ({ events, dates, onEditEvent, onCreat
                     key={event.id} 
                     event={event}
                     onEdit={onEditEvent}
+                    onResize={onResizeEvent}
                   />
                 ))}
             </DayColumn>

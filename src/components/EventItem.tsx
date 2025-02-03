@@ -36,19 +36,130 @@ const EventItemContainer = styled.div<EventItemContainerProps>`
   }
 `;
 
+// 添加新的样式组件
+const ResizeHandle = styled.div<{ $position: 'top' | 'bottom' }>`
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+  background: transparent;
+  ${props => props.$position === 'top' ? 'top: -3px' : 'bottom: -3px'};
+  z-index: 5;  // 增加 z-index 确保在拖拽区域之上
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  &:active {
+    background: rgba(0, 0, 0, 0.2);
+  }
+`;
+
+const DraggableArea = styled.div`
+  position: relative;
+  height: 100%;
+  width: 100%;
+`;
+
+const EventContent = styled.div`
+  position: relative;
+  height: 100%;
+  pointer-events: none;  // 让内容不影响拖拽
+`;
+
 interface EventItemProps {
   event: CalendarEvent;
   isPool?: boolean;
   isDragging?: boolean;
   onEdit?: (event: CalendarEvent) => void;
+  onResize?: (event: CalendarEvent, newStartTime?: string, newDuration?: number) => void;
 }
 
 const EventItem: React.FC<EventItemProps> = ({
   event,
   isPool = false,
   isDragging = false,
-  onEdit
+  onEdit,
+  onResize
 }) => {
+  // 使用 ref 来追踪 resize 状态，避免异步更新问题
+  const resizeRef = React.useRef({
+    isResizing: false,
+    startY: 0,
+    startMinutes: 0,
+    startDuration: 0,
+    handle: '' as 'top' | 'bottom' | ''
+  });
+
+  const handleResizeStart = (e: React.MouseEvent, handle: 'top' | 'bottom') => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // 计算初始时间
+    const [hours, minutes] = (event.startTime || '00:00').split(':').map(Number);
+    const startMinutes = hours * 60 + minutes;
+    
+    resizeRef.current = {
+      isResizing: true,
+      startY: e.clientY,
+      startMinutes,
+      startDuration: event.duration || 30,
+      handle
+    };
+    
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+  };
+
+  const handleResizeMove = (e: MouseEvent) => {
+    if (!resizeRef.current.isResizing || !onResize) {
+      console.log('Resize move ignored:', { 
+        isResizing: resizeRef.current.isResizing, 
+        hasOnResize: !!onResize 
+      });
+      return;
+    }
+    
+    const dy = e.clientY - resizeRef.current.startY;
+    const dMinutes = Math.round(dy / (HOUR_HEIGHT / 2)) * 30;
+    
+    console.log('Resize move:', {
+      dy,
+      dMinutes,
+      handle: resizeRef.current.handle,
+      startDuration: resizeRef.current.startDuration,
+      startMinutes: resizeRef.current.startMinutes
+    });
+
+    if (resizeRef.current.handle === 'bottom') {
+      // 拖动底部：只改变持续时间
+      const newDuration = Math.max(30, resizeRef.current.startDuration + dMinutes);
+      console.log('Bottom resize:', { newDuration });
+      onResize(event, undefined, newDuration);
+    } else {
+      // 拖动顶部：同时改变开始时间和持续时间
+      const newStartMinutes = resizeRef.current.startMinutes + dMinutes;
+      const newDuration = resizeRef.current.startDuration - dMinutes;
+      
+      console.log('Top resize:', { newStartMinutes, newDuration });
+      
+      if (newStartMinutes >= 0 && newStartMinutes < 24 * 60 && newDuration >= 30) {
+        const hours = Math.floor(newStartMinutes / 60);
+        const minutes = newStartMinutes % 60;
+        const newStartTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        onResize(event, newStartTime, newDuration);
+      }
+    }
+  };
+
+  const handleResizeEnd = () => {
+    console.log('Resize end');
+    resizeRef.current.isResizing = false;
+    document.removeEventListener('mousemove', handleResizeMove);
+    document.removeEventListener('mouseup', handleResizeEnd);
+  };
+
   // 使用 ref 来保存最新的 onEdit 函数
   const onEditRef = React.useRef(onEdit);
   
@@ -141,18 +252,43 @@ const EventItem: React.FC<EventItemProps> = ({
       $isPool={isPool}
       $isDragging={isDragging}
       style={style}
-      {...attributes}
-      {...eventHandlers}
-      {...listeners}
-      data-testid={`event-item-${event.id}`}
     >
-      <div>{event.title}</div>
-      {!isPool && event.startTime && (
-        <div style={{ fontSize: '12px', color: '#666' }}>
-          {event.startTime}
-          {event.duration && ` (${event.duration}min)`}
-        </div>
+      {!isPool && (
+        <>
+          <ResizeHandle 
+            $position="top"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleResizeStart(e, 'top');
+            }}
+          />
+          <ResizeHandle 
+            $position="bottom"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleResizeStart(e, 'bottom');
+            }}
+          />
+        </>
       )}
+      <DraggableArea
+        {...attributes}
+        {...eventHandlers}
+        {...listeners}
+        data-testid={`event-item-${event.id}`}
+      >
+        <EventContent>
+          <div>{event.title}</div>
+          {!isPool && event.startTime && (
+            <div style={{ fontSize: '12px', color: '#666' }}>
+              {event.startTime}
+              {event.duration && ` (${event.duration}min)`}
+            </div>
+          )}
+        </EventContent>
+      </DraggableArea>
     </EventItemContainer>
   );
 };

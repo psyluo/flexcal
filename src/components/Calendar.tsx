@@ -178,6 +178,23 @@ const Calendar: React.FC = () => {
     setEditingEvent(null);
   };
 
+  const handleEventResize = (event: CalendarEvent, newStartTime?: string, newDuration?: number) => {
+    setEvents(prevEvents =>
+      prevEvents.map(evt => {
+        if (evt.id !== event.id) return evt;
+        
+        const updatedEvent = { ...evt };
+        if (newStartTime !== undefined) {
+          updatedEvent.startTime = newStartTime;
+        }
+        if (newDuration !== undefined) {
+          updatedEvent.duration = newDuration;
+        }
+        return updatedEvent;
+      })
+    );
+  };
+
   return (
     <div style={{ position: 'relative' }}>
       <DndContext 
@@ -196,6 +213,7 @@ const Calendar: React.FC = () => {
             dates={weekDays}
             onEditEvent={handleEditEvent}
             onCreateEvent={handleCreateEvent}
+            onResizeEvent={handleEventResize}
           />
           <DragOverlay>
             {activeEvent && (
