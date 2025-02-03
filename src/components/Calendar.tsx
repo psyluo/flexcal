@@ -139,7 +139,29 @@ const Calendar: React.FC = () => {
   };
 
   const handleEditEvent = (event: CalendarEvent) => {
+    console.log('Calendar handleEditEvent called with:', event);
     setEditingEvent(event);
+    console.log('editingEvent set to:', event);
+  };
+
+  useEffect(() => {
+    console.log('editingEvent changed:', editingEvent);
+  }, [editingEvent]);
+
+  const handleCreateEvent = (date: Date, timeBlock?: TimeBlock) => {
+    const newEvent: CalendarEvent = {
+      id: `new-${Date.now()}`,
+      title: 'New Event',
+      date: date,
+      type: timeBlock ? 'scheduled' : 'pool',
+      duration: 30
+    };
+
+    if (timeBlock) {
+      newEvent.startTime = `${timeBlock.hour.toString().padStart(2, '0')}:${timeBlock.minute.toString().padStart(2, '0')}`;
+    }
+
+    setEditingEvent(newEvent);
   };
 
   const handleSaveEvent = (updatedEvent: CalendarEvent) => {
@@ -167,11 +189,13 @@ const Calendar: React.FC = () => {
             events={events.filter(e => e.type === 'pool')}
             dates={weekDays}
             onEditEvent={handleEditEvent}
+            onCreateEvent={handleCreateEvent}
           />
           <WeekView 
             events={events.filter(e => e.type === 'scheduled')}
             dates={weekDays}
             onEditEvent={handleEditEvent}
+            onCreateEvent={handleCreateEvent}
           />
           <DragOverlay>
             {activeEvent && (
@@ -185,12 +209,20 @@ const Calendar: React.FC = () => {
         </CalendarContainer>
       </DndContext>
 
+      {console.log('Calendar render, editingEvent:', editingEvent)}
       {editingEvent && (
         <EventDialog
           key={editingEvent.id}
           event={editingEvent}
           onClose={() => setEditingEvent(null)}
-          onSave={handleSaveEvent}
+          onSave={(event) => {
+            if (event.id.startsWith('new-')) {
+              setEvents(prev => [...prev, { ...event, id: `event-${Date.now()}` }]);
+            } else {
+              setEvents(prev => prev.map(e => e.id === event.id ? event : e));
+            }
+            setEditingEvent(null);
+          }}
           onDelete={handleDeleteEvent}
         />
       )}

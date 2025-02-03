@@ -49,11 +49,23 @@ const EventItem: React.FC<EventItemProps> = ({
   isDragging = false,
   onEdit
 }) => {
-  const [mouseState, setMouseState] = React.useState({
-    isDown: false,
-    startX: 0,
-    startY: 0,
-    moved: false
+  // 使用 ref 来保存最新的 onEdit 函数
+  const onEditRef = React.useRef(onEdit);
+  
+  // 更新 ref 当 onEdit 改变时
+  React.useEffect(() => {
+    onEditRef.current = onEdit;
+  }, [onEdit]);
+
+  console.log('EventItem rendering:', { 
+    eventId: event.id, 
+    hasOnEdit: !!onEdit 
+  });
+
+  // 使用 ref 来追踪点击状态
+  const clickRef = React.useRef({
+    isClick: true,
+    timeout: null as any
   });
 
   const {attributes, listeners, setNodeRef, transform} = useDraggable({
@@ -64,37 +76,38 @@ const EventItem: React.FC<EventItemProps> = ({
     }
   });
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setMouseState({
-      isDown: true,
-      startX: e.clientX,
-      startY: e.clientY,
-      moved: false
-    });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (mouseState.isDown) {
-      const dx = Math.abs(e.clientX - mouseState.startX);
-      const dy = Math.abs(e.clientY - mouseState.startY);
-      if (dx > 3 || dy > 3) {
-        setMouseState(prev => ({ ...prev, moved: true }));
+  // 分离拖拽和点击事件
+  const eventHandlers = React.useMemo(() => ({
+    onMouseDown: (e: React.MouseEvent) => {
+      clickRef.current.isClick = true;
+      // 设置一个短暂的延时，如果在这个时间内发生移动，则不是点击
+      clickRef.current.timeout = setTimeout(() => {
+        clickRef.current.isClick = false;
+      }, 200);
+      listeners.onMouseDown?.(e as any);
+    },
+    onMouseMove: (e: React.MouseEvent) => {
+      if (clickRef.current.isClick) {
+        clickRef.current.isClick = false;
+        clearTimeout(clickRef.current.timeout);
       }
+      listeners.onMouseMove?.(e as any);
+    },
+    onMouseUp: (e: React.MouseEvent) => {
+      clearTimeout(clickRef.current.timeout);
+      if (clickRef.current.isClick) {
+        console.log('EventItem click detected:', { 
+          eventId: event.id,
+          hasOnEdit: !!onEditRef.current
+        });
+        e.stopPropagation();
+        if (onEditRef.current) {
+          onEditRef.current(event);
+        }
+      }
+      listeners.onMouseUp?.(e as any);
     }
-  };
-
-  const handleMouseUp = (e: React.MouseEvent) => {
-    if (mouseState.isDown && !mouseState.moved) {
-      onEdit?.(event);
-    }
-
-    setMouseState({
-      isDown: false,
-      startX: 0,
-      startY: 0,
-      moved: false
-    });
-  };
+  }), [event, listeners]);
 
   const getEventPosition = () => {
     if (isPool || isDragging) return {};
@@ -128,16 +141,9 @@ const EventItem: React.FC<EventItemProps> = ({
       $isPool={isPool}
       $isDragging={isDragging}
       style={style}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={() => setMouseState({
-        isDown: false,
-        startX: 0,
-        startY: 0,
-        moved: false
-      })}
       {...attributes}
+      {...eventHandlers}
+      {...listeners}
       data-testid={`event-item-${event.id}`}
     >
       <div>{event.title}</div>

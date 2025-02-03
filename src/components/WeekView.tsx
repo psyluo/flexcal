@@ -99,20 +99,11 @@ interface WeekViewProps {
   events: CalendarEvent[];
   dates: Date[];
   onEditEvent: (event: CalendarEvent) => void;
+  onCreateEvent: (date: Date, timeBlock?: TimeBlock) => void;
 }
 
-const WeekView: React.FC<WeekViewProps> = ({ events, dates, onEditEvent }) => {
+const WeekView: React.FC<WeekViewProps> = ({ events, dates, onEditEvent, onCreateEvent }) => {
   console.log('WeekView: rendering with onEditEvent:', !!onEditEvent);
-
-  const handleEventEdit = (event: CalendarEvent) => {
-    console.log('WeekView: handleEventEdit called', event);
-    try {
-      onEditEvent(event);
-      console.log('WeekView: onEditEvent called successfully');
-    } catch (error) {
-      console.error('WeekView: error calling onEditEvent', error);
-    }
-  };
 
   // 生成48个半小时块
   const timeBlocks: TimeBlock[] = Array.from({ length: 48 }, (_, index) => {
@@ -139,14 +130,8 @@ const WeekView: React.FC<WeekViewProps> = ({ events, dates, onEditEvent }) => {
     return `${hour}:${minute}`;
   };
 
-  const handleTimeBlockClick = (block: TimeBlock, index: number) => {
-    console.log('Clicked time block:', {
-      index,
-      hour: block.hour,
-      minute: block.minute,
-      formattedTime: `${block.hour.toString().padStart(2, '0')}:${block.minute.toString().padStart(2, '0')}`,
-      position: `${index * (HOUR_HEIGHT / 2)}px`
-    });
+  const handleTimeBlockClick = (date: Date, block: TimeBlock) => {
+    onCreateEvent(date, block);
   };
 
   const handleTimeBlockHover = (block: TimeBlock, index: number) => {
@@ -204,7 +189,7 @@ const WeekView: React.FC<WeekViewProps> = ({ events, dates, onEditEvent }) => {
                     data-hour={block.hour}
                     data-minute={block.minute}
                     data-index={index}
-                    onClick={() => handleTimeBlockClick(block, index)}
+                    onClick={() => handleTimeBlockClick(date, block)}
                     onMouseEnter={() => handleTimeBlockHover(block, index)}
                     style={{
                       position: 'absolute',

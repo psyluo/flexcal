@@ -31,9 +31,10 @@ interface PoolRowProps {
   events: CalendarEvent[];
   dates: Date[];
   onEditEvent: (event: CalendarEvent) => void;
+  onCreateEvent: (date: Date) => void;
 }
 
-const PoolRow: React.FC<PoolRowProps> = ({ events, dates, onEditEvent }) => {
+const PoolRow: React.FC<PoolRowProps> = ({ events, dates, onEditEvent, onCreateEvent }) => {
   console.log('PoolRow: received onEditEvent prop:', !!onEditEvent);
   return (
     <PoolContainer>
@@ -52,6 +53,7 @@ const PoolRow: React.FC<PoolRowProps> = ({ events, dates, onEditEvent }) => {
             key={date.toISOString()} 
             ref={setNodeRef}
             $isOver={isOver}
+            onClick={() => onCreateEvent(date)}
           >
             {events
               .filter(event => isSameDay(new Date(event.date), date))
