@@ -22,15 +22,41 @@ const CalendarContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow: hidden;
 `;
 
-const PoolContainer = styled.div`
+const FixedHeader = styled.div`
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 4;
+  border-bottom: 1px solid #e0e0e0;
+`;
+
+const HeaderRow = styled.div`
   display: grid;
   grid-template-columns: 60px repeat(7, 1fr);
-  border-bottom: 2px solid #e0e0e0;
-  height: ${POOL_HEIGHT}px;
-  min-height: ${POOL_HEIGHT}px;
+  border-bottom: 1px solid #e0e0e0;
+`;
+
+const HeaderCell = styled.div`
+  padding: 8px;
+  text-align: center;
+  border-right: 1px solid #e0e0e0;
+  height: ${HEADER_HEIGHT}px;
+  
+  .day-name {
+    font-weight: bold;
+  }
+  
+  .date {
+    font-size: 12px;
+    color: #666;
+  }
+`;
+
+const ScrollableContent = styled.div`
+  flex: 1;
+  overflow-y: auto;
 `;
 
 const Calendar: React.FC = () => {
@@ -202,29 +228,44 @@ const Calendar: React.FC = () => {
         onDragEnd={handleDragEnd}
       >
         <CalendarContainer>
-          <PoolRow 
-            events={events.filter(e => e.type === 'pool')}
-            dates={weekDays}
-            onEditEvent={handleEditEvent}
-            onCreateEvent={handleCreateEvent}
-          />
-          <WeekView 
-            events={events.filter(e => e.type === 'scheduled')}
-            dates={weekDays}
-            onEditEvent={handleEditEvent}
-            onCreateEvent={handleCreateEvent}
-            onResizeEvent={handleEventResize}
-          />
-          <DragOverlay>
-            {activeEvent && (
-              <EventItem 
-                event={activeEvent}
-                isPool={activeEvent.type === 'pool'}
-                isDragging={true}
-              />
-            )}
-          </DragOverlay>
+          <FixedHeader>
+            <HeaderRow>
+              <HeaderCell />
+              {weekDays.map(date => (
+                <HeaderCell key={date.toISOString()}>
+                  <div className="day-name">{format(date, 'EEE')}</div>
+                  <div className="date">{format(date, 'MM/dd')}</div>
+                </HeaderCell>
+              ))}
+            </HeaderRow>
+            <PoolRow 
+              events={events.filter(e => e.type === 'pool')}
+              dates={weekDays}
+              onEditEvent={handleEditEvent}
+              onCreateEvent={handleCreateEvent}
+            />
+          </FixedHeader>
+          
+          <ScrollableContent>
+            <WeekView 
+              events={events.filter(e => e.type === 'scheduled')}
+              dates={weekDays}
+              onEditEvent={handleEditEvent}
+              onCreateEvent={handleCreateEvent}
+              onResizeEvent={handleEventResize}
+            />
+          </ScrollableContent>
         </CalendarContainer>
+        
+        <DragOverlay>
+          {activeEvent && (
+            <EventItem 
+              event={activeEvent}
+              isPool={activeEvent.type === 'pool'}
+              isDragging={true}
+            />
+          )}
+        </DragOverlay>
       </DndContext>
 
       {console.log('Calendar render, editingEvent:', editingEvent)}

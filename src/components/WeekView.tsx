@@ -8,15 +8,19 @@ import { useDroppable } from '@dnd-kit/core';
 
 const WeekViewContainer = styled.div`
   flex: 1;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 `;
 
 const HeaderRow = styled.div`
   display: grid;
   grid-template-columns: 60px repeat(7, 1fr);
   border-bottom: 1px solid #e0e0e0;
+  background: white;
+  position: sticky;
+  top: 0;
+  z-index: 3;
 `;
 
 const HeaderCell = styled.div`
@@ -40,6 +44,7 @@ const TimeGridContainer = styled.div`
   grid-template-columns: 60px repeat(7, 1fr);
   flex: 1;
   position: relative;
+  overflow-y: auto;
 `;
 
 const TimeColumn = styled.div`
@@ -147,17 +152,7 @@ const WeekView: React.FC<WeekViewProps> = ({ events, dates, onEditEvent, onCreat
 
   return (
     <WeekViewContainer>
-      <HeaderRow>
-        <HeaderCell />
-        {dates.map(date => (
-          <HeaderCell key={date.toISOString()}>
-            <div className="day-name">{format(date, 'EEE')}</div>
-            <div className="date">{format(date, 'MM/dd')}</div>
-          </HeaderCell>
-        ))}
-      </HeaderRow>
-      
-      <TimeGridContainer className="time-grid-container">
+      <TimeGridContainer>
         <TimeColumn>
           {timeBlocks.map((block, index) => (
             <TimeSlot key={index}>
@@ -166,58 +161,51 @@ const WeekView: React.FC<WeekViewProps> = ({ events, dates, onEditEvent, onCreat
           ))}
         </TimeColumn>
         
-        {dates.map(date => {
-          const dropId = `day-${date.toISOString()}`;
-          
-          return (
-            <DayColumn key={date.toISOString()}>
-              {timeBlocks.map((block, index) => {
-                const { setNodeRef, isOver } = useDroppable({
-                  id: `${dropId}-${block.hour}-${block.minute}`,
-                  data: {
-                    date,
-                    type: 'scheduled',
-                    timeBlock: block,
-                    blockIndex: index
-                  }
-                });
+        {dates.map(date => (
+          <DayColumn key={date.toISOString()}>
+            {timeBlocks.map((block, index) => {
+              const { setNodeRef, isOver } = useDroppable({
+                id: `${date.toISOString()}-${block.hour}-${block.minute}`,
+                data: {
+                  date,
+                  type: 'scheduled',
+                  timeBlock: block,
+                  blockIndex: index
+                }
+              });
 
-                return (
-                  <TimeBlockCell
-                    key={index}
-                    ref={setNodeRef}
-                    $isOver={isOver}
-                    data-hour={block.hour}
-                    data-minute={block.minute}
-                    data-index={index}
-                    onClick={() => handleTimeBlockClick(date, block)}
-                    onMouseEnter={() => handleTimeBlockHover(block, index)}
-                    style={{
-                      position: 'absolute',
-                      top: `${index * (HOUR_HEIGHT / 2)}px`,
-                      left: 0,
-                      right: 0,
-                      pointerEvents: 'all'
-                    }}
-                  />
-                );
-              })}
-              {events
-                .filter(event => {
-                  const eventDate = new Date(event.date);
-                  return isSameDay(eventDate, date);
-                })
-                .map(event => (
-                  <EventItem 
-                    key={event.id} 
-                    event={event}
-                    onEdit={onEditEvent}
-                    onResize={onResizeEvent}
-                  />
-                ))}
-            </DayColumn>
-          );
-        })}
+              return (
+                <TimeBlockCell
+                  key={index}
+                  ref={setNodeRef}
+                  $isOver={isOver}
+                  data-hour={block.hour}
+                  data-minute={block.minute}
+                  data-index={index}
+                  onClick={() => handleTimeBlockClick(date, block)}
+                  onMouseEnter={() => handleTimeBlockHover(block, index)}
+                  style={{
+                    position: 'absolute',
+                    top: `${index * (HOUR_HEIGHT / 2)}px`,
+                    left: 0,
+                    right: 0,
+                    pointerEvents: 'all'
+                  }}
+                />
+              );
+            })}
+            {events
+              .filter(event => isSameDay(new Date(event.date), date))
+              .map(event => (
+                <EventItem 
+                  key={event.id} 
+                  event={event}
+                  onEdit={onEditEvent}
+                  onResize={onResizeEvent}
+                />
+              ))}
+          </DayColumn>
+        ))}
       </TimeGridContainer>
     </WeekViewContainer>
   );

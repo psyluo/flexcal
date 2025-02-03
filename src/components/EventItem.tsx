@@ -281,12 +281,10 @@ const EventItem: React.FC<EventItemProps> = ({
       >
         <EventContent>
           <div>{event.title}</div>
-          {!isPool && event.startTime && (
-            <div style={{ fontSize: '12px', color: '#666' }}>
-              {event.startTime}
-              {event.duration && ` (${event.duration}min)`}
-            </div>
-          )}
+          <div style={{ fontSize: '12px', color: '#666' }}>
+            {event.startTime && `${event.startTime}, `}
+            {event.duration && `${event.duration}min`}
+          </div>
         </EventContent>
       </DraggableArea>
     </EventItemContainer>
