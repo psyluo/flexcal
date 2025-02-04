@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useDroppable } from '@dnd-kit/core';
 import { CalendarEvent } from '../../types';
 import EventItem from '../EventItem';
+import { HOUR_HEIGHT } from '../../constants';
 
 interface EventListContainerProps {
   $isOver?: boolean;
@@ -13,7 +14,7 @@ const EventListContainer = styled.div.attrs({
 })<EventListContainerProps>`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
   position: relative;
   padding: 4px;
@@ -30,11 +31,12 @@ const EventRow = styled.div.attrs({
 })`
   display: flex;
   width: 100%;
-  min-height: 60px;
+  position: relative;
+  min-height: ${HOUR_HEIGHT / 2}px;
   border-radius: 4px;
-  
-  &:hover {
-    background-color: #f5f5f5;
+
+  & + & {
+    margin-top: 4px;
   }
 `;
 

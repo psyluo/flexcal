@@ -174,6 +174,18 @@ const Calendar: React.FC = () => {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     
+    // 添加调试日志
+    console.log('Drag end:', {
+      active: {
+        id: active.id,
+        data: active.data.current
+      },
+      over: over ? {
+        id: over.id,
+        data: over.data.current
+      } : null
+    });
+
     if (!over) {
       setActiveEvent(null);
       return;
