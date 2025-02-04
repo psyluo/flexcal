@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { startOfWeek, addDays, format } from 'date-fns';
+import { startOfWeek, addDays, format, addWeeks, subWeeks } from 'date-fns';
 import { 
   DndContext, 
   DragEndEvent,
@@ -15,6 +15,7 @@ import PoolRow from './PoolRow';
 import EventItem from './EventItem';
 import { POOL_HEIGHT, HOUR_HEIGHT, MINUTES_SNAP } from '../constants';
 import EventDialog from './EventDialog';
+import WeekSwitcher from './WeekSwitcher';
 
 export const HEADER_HEIGHT = 50; // 日期行高度
 
@@ -60,9 +61,8 @@ const ScrollableContent = styled.div`
 `;
 
 const Calendar: React.FC = () => {
-  // 确保使用本地时间
   const today = new Date();
-  const [currentDate] = useState(today);
+  const [currentDate, setCurrentDate] = useState(today);
   
   const [events, setEvents] = useState<CalendarEvent[]>([
     {
@@ -221,8 +221,21 @@ const Calendar: React.FC = () => {
     );
   };
 
+  const handlePrevWeek = () => {
+    setCurrentDate(prev => subWeeks(prev, 1));
+  };
+
+  const handleNextWeek = () => {
+    setCurrentDate(prev => addWeeks(prev, 1));
+  };
+
   return (
     <div style={{ position: 'relative' }}>
+      <WeekSwitcher
+        currentDate={currentDate}
+        onPrevWeek={handlePrevWeek}
+        onNextWeek={handleNextWeek}
+      />
       <DndContext 
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
