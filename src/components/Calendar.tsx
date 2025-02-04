@@ -16,13 +16,31 @@ import EventItem from './EventItem';
 import { POOL_HEIGHT, HOUR_HEIGHT, MINUTES_SNAP } from '../constants';
 import EventDialog from './EventDialog';
 import WeekSwitcher from './WeekSwitcher';
+import ThisWeekArea from './ThisWeekArea';
+import GeneralArea from './GeneralArea';
 
 export const HEADER_HEIGHT = 50; // 日期行高度
 
-const CalendarContainer = styled.div`
+const RootContainer = styled.div`
+  display: flex;
+  height: 100vh;
+  padding: 16px;
+  gap: 16px;
+`;
+
+const SidebarContainer = styled.div`
+  width: 300px;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  padding-top: ${HEADER_HEIGHT + 16}px;  // 增加顶部间距
+  gap: 16px;  // 添加区域之间的间距
+`;
+
+const MainContainer = styled.div`
+  flex: 1;
+  min-width: 0;  // 防止flex子项溢出
+  display: flex;
+  flex-direction: column;
 `;
 
 const FixedHeader = styled.div`
@@ -58,6 +76,14 @@ const HeaderCell = styled.div`
 const ScrollableContent = styled.div`
   flex: 1;
   overflow-y: auto;
+`;
+
+const MainCalendarContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 `;
 
 const Calendar: React.FC = () => {
@@ -230,56 +256,71 @@ const Calendar: React.FC = () => {
   };
 
   return (
-    <div style={{ position: 'relative' }}>
-      <WeekSwitcher
-        currentDate={currentDate}
-        onPrevWeek={handlePrevWeek}
-        onNextWeek={handleNextWeek}
-      />
-      <DndContext 
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <CalendarContainer>
-          <FixedHeader>
-            <HeaderRow>
-              <HeaderCell />
-              {weekDays.map(date => (
-                <HeaderCell key={date.toISOString()}>
-                  <div className="day-name">{format(date, 'EEE')}</div>
-                  <div className="date">{format(date, 'MM/dd')}</div>
-                </HeaderCell>
-              ))}
-            </HeaderRow>
-            <PoolRow 
-              events={events.filter(e => e.type === 'pool')}
-              dates={weekDays}
-              onEditEvent={handleEditEvent}
-              onCreateEvent={handleCreateEvent}
-            />
-          </FixedHeader>
+    <RootContainer>
+      <SidebarContainer>
+        <ThisWeekArea
+          events={events.filter(e => e.type === 'thisWeek')}
+          onEditEvent={handleEditEvent}
+          onCreateEvent={() => handleCreateEvent(undefined)}
+        />
+        <GeneralArea
+          events={events.filter(e => e.type === 'general')}
+          onEditEvent={handleEditEvent}
+          onCreateEvent={() => handleCreateEvent(undefined)}
+        />
+      </SidebarContainer>
+
+      <MainContainer>
+        <WeekSwitcher
+          currentDate={currentDate}
+          onPrevWeek={handlePrevWeek}
+          onNextWeek={handleNextWeek}
+        />
+        <DndContext 
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <MainCalendarContainer>
+            <FixedHeader>
+              <HeaderRow>
+                <HeaderCell />
+                {weekDays.map(date => (
+                  <HeaderCell key={date.toISOString()}>
+                    <div className="day-name">{format(date, 'EEE')}</div>
+                    <div className="date">{format(date, 'MM/dd')}</div>
+                  </HeaderCell>
+                ))}
+              </HeaderRow>
+              <PoolRow 
+                events={events.filter(e => e.type === 'pool')}
+                dates={weekDays}
+                onEditEvent={handleEditEvent}
+                onCreateEvent={handleCreateEvent}
+              />
+            </FixedHeader>
+            
+            <ScrollableContent>
+              <WeekView 
+                events={events.filter(e => e.type === 'scheduled')}
+                dates={weekDays}
+                onEditEvent={handleEditEvent}
+                onCreateEvent={handleCreateEvent}
+                onResizeEvent={handleEventResize}
+              />
+            </ScrollableContent>
+          </MainCalendarContainer>
           
-          <ScrollableContent>
-            <WeekView 
-              events={events.filter(e => e.type === 'scheduled')}
-              dates={weekDays}
-              onEditEvent={handleEditEvent}
-              onCreateEvent={handleCreateEvent}
-              onResizeEvent={handleEventResize}
-            />
-          </ScrollableContent>
-        </CalendarContainer>
-        
-        <DragOverlay>
-          {activeEvent && (
-            <EventItem 
-              event={activeEvent}
-              isPool={activeEvent.type === 'pool'}
-              isDragging={true}
-            />
-          )}
-        </DragOverlay>
-      </DndContext>
+          <DragOverlay>
+            {activeEvent && (
+              <EventItem 
+                event={activeEvent}
+                isPool={activeEvent.type === 'pool'}
+                isDragging={true}
+              />
+            )}
+          </DragOverlay>
+        </DndContext>
+      </MainContainer>
 
       {console.log('Calendar render, editingEvent:', editingEvent)}
       {editingEvent && (
@@ -298,7 +339,7 @@ const Calendar: React.FC = () => {
           onDelete={handleDeleteEvent}
         />
       )}
-    </div>
+    </RootContainer>
   );
 };
 

@@ -1,4 +1,4 @@
-export type EventType = 'pool' | 'scheduled';
+export type EventType = 'pool' | 'scheduled' | 'thisWeek' | 'general';
 
 // 添加时间块相关的类型
 export interface TimeBlock {
