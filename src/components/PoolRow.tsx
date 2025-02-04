@@ -19,12 +19,19 @@ const PoolLabel = styled.div`
   align-items: center;
 `;
 
+const POOL_HEIGHT = 100;
+
 const PoolCell = styled.div<{ $isOver?: boolean }>`
+  height: ${POOL_HEIGHT}px;
   border-right: 1px solid #e0e0e0;
-  padding: 8px;
-  min-height: 100px;
-  background-color: ${props => props.$isOver ? '#f5f5f5' : 'transparent'};
+  position: relative;
+  box-sizing: border-box;
+  background-color: ${props => props.$isOver ? 'rgba(0, 0, 0, 0.05)' : 'transparent'};
   transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #f8f8f8;
+  }
 `;
 
 interface PoolRowProps {

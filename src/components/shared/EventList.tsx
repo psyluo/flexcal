@@ -4,15 +4,25 @@ import { useDroppable } from '@dnd-kit/core';
 import { CalendarEvent } from '../../types';
 import EventItem from '../EventItem';
 
+interface EventListContainerProps {
+  $isOver?: boolean;
+}
+
 const EventListContainer = styled.div.attrs({
   className: 'event-list-container'
-})`
+})<EventListContainerProps>`
   display: flex;
   flex-direction: column;
   gap: 12px;
   width: 100%;
   position: relative;
   padding: 4px;
+  background-color: ${props => props.$isOver ? 'rgba(0, 0, 0, 0.05)' : 'transparent'};
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #f8f8f8;
+  }
 `;
 
 const EventRow = styled.div.attrs({
@@ -45,7 +55,11 @@ const EventList: React.FC<EventListProps> = ({
   });
 
   return (
-    <EventListContainer ref={setNodeRef} data-testid={`${areaType}-event-list`}>
+    <EventListContainer 
+      ref={setNodeRef} 
+      data-testid={`${areaType}-event-list`}
+      $isOver={isOver}
+    >
       {events.map(event => {
         return (
           <EventRow key={event.id} data-testid={`event-row-${event.id}`}>

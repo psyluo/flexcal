@@ -34,6 +34,11 @@ export const AreaContent = styled.div.attrs({
   position: relative;
   display: flex;
   flex-direction: column;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #f8f8f8;
+  }
 `;
 
 export const AreaTitle = styled.div.attrs({
