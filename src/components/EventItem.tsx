@@ -12,25 +12,37 @@ interface EventItemContainerProps {
 }
 
 const EventItemContainer = styled.div<EventItemContainerProps>`
-  position: ${props => props.$isPool ? 'relative' : 'absolute'};
-  ${props => !props.$isPool && `
-    top: ${props.$top}px;
-    height: ${props.$height}px;
-    left: 0;
-    right: 0;
-  `}
-  width: calc(100% - 16px);
-  margin: ${props => props.$isPool ? '4px 8px' : '0 8px'};
-  background-color: #e3f2fd;
+  ${props => {
+    if (props.$top !== undefined && props.$height !== undefined) {
+      // 日历格子中的事件样式
+      return `
+        position: absolute;
+        top: ${props.$top}px;
+        height: ${props.$height}px;
+        left: 0;
+        right: 0;
+        margin: 0 8px;
+        padding: 4px 8px;
+        background-color: #e3f2fd;
+      `;
+    } else {
+      // Pool、ThisWeek 和 General 事件共用样式
+      return `
+        position: relative;
+        width: calc(100% - 16px);
+        margin: 4px 8px;
+        min-height: 40px;
+        padding: 4px 8px;
+        background-color: #e3f2fd;
+      `;
+    }
+  }}
+
   border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 14px;
   cursor: pointer;
   user-select: none;
-  overflow: hidden;
-  box-sizing: border-box;
   z-index: ${props => props.$isDragging ? 9999 : 1};
-  
+
   &:hover {
     background-color: #bbdefb;
   }
@@ -63,9 +75,14 @@ const DraggableArea = styled.div`
 `;
 
 const EventContent = styled.div`
-  position: relative;
-  height: 100%;
-  pointer-events: none;  // 让内容不影响拖拽
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  ${props => props.$isScheduled && `
+    position: relative;
+    height: 100%;
+    pointer-events: none;
+  `}
 `;
 
 interface EventItemProps {

@@ -8,6 +8,9 @@ import {
   defaultDropAnimationSideEffects,
   DragStartEvent,
   DragMoveEvent,
+  Active,
+  Over,
+  Modifier,
 } from '@dnd-kit/core';
 import { CalendarEvent, TimeBlock } from '../types';
 import WeekView from './WeekView';
@@ -26,21 +29,40 @@ const RootContainer = styled.div`
   height: 100vh;
   padding: 16px;
   gap: 16px;
+  overflow: hidden;  // 防止整体滚动
 `;
 
 const SidebarContainer = styled.div`
-  width: 300px;
+  width: 60px;  // 与时间列宽度相同
+  flex-shrink: 0;
+`;
+
+const ContentContainer = styled.div`
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  min-width: 0;
+  overflow: hidden;
+  gap: 32px;  // 从 16px 增加到 32px，增加列间距
+`;
+
+const SideAreaContainer = styled.div`
+  width: 100%;
   display: flex;
   flex-direction: column;
-  padding-top: ${HEADER_HEIGHT + 16}px;  // 增加顶部间距
-  gap: 16px;  // 添加区域之间的间距
+  gap: 16px;
+  margin-top: ${HEADER_HEIGHT}px;
+  overflow-y: auto;  // 允许侧边区域滚动
+  max-height: calc(100vh - ${HEADER_HEIGHT}px - 32px);  // 减去头部高度和padding
 `;
 
 const MainContainer = styled.div`
   flex: 1;
-  min-width: 0;  // 防止flex子项溢出
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  height: 100vh;  // 设置高度
+  overflow: hidden;  // 防止整体滚动
 `;
 
 const FixedHeader = styled.div`
@@ -75,7 +97,8 @@ const HeaderCell = styled.div`
 
 const ScrollableContent = styled.div`
   flex: 1;
-  overflow-y: auto;
+  overflow-y: auto;  // 允许内容区域滚动
+  min-height: 0;     // 重要：允许flex子项收缩
 `;
 
 const MainCalendarContainer = styled.div`
@@ -94,24 +117,30 @@ const Calendar: React.FC = () => {
     {
       id: '1',
       title: 'Meeting with Team',
-      date: today, // 使用同一个时间对象
-      startTime: '10:00',
       duration: 60,
+      date: today,
+      startTime: '10:00',
       type: 'scheduled'
     },
     {
       id: '2',
-      title: 'Lunch Break',
+      title: 'Review Documents',
+      duration: 30,
       date: today,
-      startTime: '12:00',
-      duration: 60,
-      type: 'scheduled'
+      type: 'pool'
     },
     {
       id: '3',
-      title: 'Review PR',
-      date: today,
-      type: 'pool'
+      title: 'Call Client',
+      duration: 30,
+      roughTime: 'this-week',
+      type: 'thisWeek'
+    },
+    {
+      id: '4',
+      title: 'Update Portfolio',
+      duration: 120,
+      type: 'general'
     }
   ]);
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
@@ -139,15 +168,6 @@ const Calendar: React.FC = () => {
     const hours = Math.floor(snappedMinutes / 60);
     const minutes = snappedMinutes % 60;
     
-    // 添加调试信息
-    console.log('Time calculation:', {
-      y,
-      totalMinutes,
-      snappedMinutes,
-      hours,
-      minutes
-    });
-    
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
@@ -156,30 +176,47 @@ const Calendar: React.FC = () => {
     
     if (!over) {
       setActiveEvent(null);
-      return; // 如果没有有效的放置位置，直接返回，保持原始事件
+      return;
     }
 
     const draggedEvent = active.data.current?.event as CalendarEvent;
+    const targetType = over.data.current?.type as EventType;
     const targetDate = over.data.current?.date as Date;
-    const targetType = over.data.current?.type as 'pool' | 'scheduled';
     const timeBlock = over.data.current?.timeBlock as TimeBlock;
 
-    if (draggedEvent && targetDate) {
-      const newEvent = { 
-        ...draggedEvent, 
-        date: new Date(targetDate),
-        type: targetType 
-      };
-      
-      if (targetType === 'scheduled' && timeBlock) {
-        newEvent.startTime = `${timeBlock.hour.toString().padStart(2, '0')}:${timeBlock.minute.toString().padStart(2, '0')}`;
-        newEvent.duration = draggedEvent.duration || 30;
-      } else {
-        delete newEvent.startTime;
-        delete newEvent.duration;
+    if (draggedEvent) {
+      const newEvent = { ...draggedEvent };
+      newEvent.type = targetType;
+
+      // 根据目标类型设置或清除属性
+      switch (targetType) {
+        case 'scheduled':
+          newEvent.date = targetDate;
+          if (timeBlock) {
+            newEvent.startTime = `${timeBlock.hour.toString().padStart(2, '0')}:${timeBlock.minute.toString().padStart(2, '0')}`;
+          }
+          delete newEvent.roughTime;
+          break;
+        
+        case 'pool':
+          newEvent.date = targetDate;
+          delete newEvent.startTime;
+          delete newEvent.roughTime;
+          break;
+        
+        case 'thisWeek':
+          delete newEvent.date;
+          delete newEvent.startTime;
+          newEvent.roughTime = 'this-week';
+          break;
+        
+        case 'general':
+          delete newEvent.date;
+          delete newEvent.startTime;
+          delete newEvent.roughTime;
+          break;
       }
 
-      // 更新事件列表，替换原始事件
       setEvents(prevEvents => 
         prevEvents.map(evt => 
           evt.id === draggedEvent.id ? newEvent : evt
@@ -191,26 +228,38 @@ const Calendar: React.FC = () => {
   };
 
   const handleEditEvent = (event: CalendarEvent) => {
-    console.log('Calendar handleEditEvent called with:', event);
     setEditingEvent(event);
-    console.log('editingEvent set to:', event);
   };
 
-  useEffect(() => {
-    console.log('editingEvent changed:', editingEvent);
-  }, [editingEvent]);
+  const handleCreateEvent = (date?: Date, timeBlock?: TimeBlock, specificType?: EventType) => {
+    let eventType: EventType;
+    if (specificType) {
+      eventType = specificType;
+    } else if (timeBlock) {
+      eventType = 'scheduled';
+    } else if (date) {
+      eventType = 'pool';
+    } else {
+      eventType = 'general';
+    }
 
-  const handleCreateEvent = (date: Date, timeBlock?: TimeBlock) => {
     const newEvent: CalendarEvent = {
       id: `new-${Date.now()}`,
       title: 'New Event',
-      date: date,
-      type: timeBlock ? 'scheduled' : 'pool',
-      duration: 30
+      duration: 30,
+      type: eventType
     };
+
+    if (date) {
+      newEvent.date = date;
+    }
 
     if (timeBlock) {
       newEvent.startTime = `${timeBlock.hour.toString().padStart(2, '0')}:${timeBlock.minute.toString().padStart(2, '0')}`;
+    }
+
+    if (eventType === 'thisWeek') {
+      newEvent.roughTime = 'this-week';
     }
 
     setEditingEvent(newEvent);
@@ -255,74 +304,92 @@ const Calendar: React.FC = () => {
     setCurrentDate(prev => addWeeks(prev, 1));
   };
 
+  const adjustTransparency: Modifier = ({ transform, dragging }) => {
+    return {
+      ...transform,
+      scaleX: 1,
+      scaleY: 1,
+      opacity: dragging ? 0.2 : 1,
+    };
+  };
+
   return (
     <RootContainer>
-      <SidebarContainer>
-        <ThisWeekArea
-          events={events.filter(e => e.type === 'thisWeek')}
-          onEditEvent={handleEditEvent}
-          onCreateEvent={() => handleCreateEvent(undefined)}
-        />
-        <GeneralArea
-          events={events.filter(e => e.type === 'general')}
-          onEditEvent={handleEditEvent}
-          onCreateEvent={() => handleCreateEvent(undefined)}
-        />
-      </SidebarContainer>
+      <DndContext 
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        modifiers={[adjustTransparency]}
+      >
+        <SidebarContainer>
+          {/* 时间列 */}
+        </SidebarContainer>
 
-      <MainContainer>
-        <WeekSwitcher
-          currentDate={currentDate}
-          onPrevWeek={handlePrevWeek}
-          onNextWeek={handleNextWeek}
-        />
-        <DndContext 
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <MainCalendarContainer>
-            <FixedHeader>
-              <HeaderRow>
-                <HeaderCell />
-                {weekDays.map(date => (
-                  <HeaderCell key={date.toISOString()}>
-                    <div className="day-name">{format(date, 'EEE')}</div>
-                    <div className="date">{format(date, 'MM/dd')}</div>
-                  </HeaderCell>
-                ))}
-              </HeaderRow>
-              <PoolRow 
-                events={events.filter(e => e.type === 'pool')}
-                dates={weekDays}
-                onEditEvent={handleEditEvent}
-                onCreateEvent={handleCreateEvent}
-              />
-            </FixedHeader>
-            
-            <ScrollableContent>
-              <WeekView 
-                events={events.filter(e => e.type === 'scheduled')}
-                dates={weekDays}
-                onEditEvent={handleEditEvent}
-                onCreateEvent={handleCreateEvent}
-                onResizeEvent={handleEventResize}
-              />
-            </ScrollableContent>
-          </MainCalendarContainer>
-          
-          <DragOverlay>
-            {activeEvent && (
-              <EventItem 
-                event={activeEvent}
-                isPool={activeEvent.type === 'pool'}
-                isDragging={true}
-              />
-            )}
-          </DragOverlay>
-        </DndContext>
-      </MainContainer>
+        <ContentContainer>
+          <SideAreaContainer>
+            <ThisWeekArea
+              events={events.filter(e => e.type === 'thisWeek')}
+              onEditEvent={handleEditEvent}
+              onCreateEvent={() => handleCreateEvent(undefined, undefined, 'thisWeek')}
+            />
+            <GeneralArea
+              events={events.filter(e => e.type === 'general')}
+              onEditEvent={handleEditEvent}
+              onCreateEvent={() => handleCreateEvent(undefined, undefined, 'general')}
+            />
+          </SideAreaContainer>
 
-      {console.log('Calendar render, editingEvent:', editingEvent)}
+          {/* 日历主体部分占用剩余6列 */}
+          <div style={{ gridColumn: '2 / 8' }}>
+            <MainContainer>
+              <WeekSwitcher
+                currentDate={currentDate}
+                onPrevWeek={handlePrevWeek}
+                onNextWeek={handleNextWeek}
+              />
+              <MainCalendarContainer>
+                <FixedHeader>
+                  <HeaderRow>
+                    <HeaderCell />
+                    {weekDays.map(date => (
+                      <HeaderCell key={date.toISOString()}>
+                        <div className="day-name">{format(date, 'EEE')}</div>
+                        <div className="date">{format(date, 'MM/dd')}</div>
+                      </HeaderCell>
+                    ))}
+                  </HeaderRow>
+                  <PoolRow 
+                    events={events.filter(e => e.type === 'pool')}
+                    dates={weekDays}
+                    onEditEvent={handleEditEvent}
+                    onCreateEvent={handleCreateEvent}
+                  />
+                </FixedHeader>
+                
+                <ScrollableContent>
+                  <WeekView 
+                    events={events.filter(e => e.type === 'scheduled')}
+                    dates={weekDays}
+                    onEditEvent={handleEditEvent}
+                    onCreateEvent={handleCreateEvent}
+                    onResizeEvent={handleEventResize}
+                  />
+                </ScrollableContent>
+              </MainCalendarContainer>
+            </MainContainer>
+          </div>
+        </ContentContainer>
+
+        <DragOverlay>
+          {activeEvent && (
+            <EventItem 
+              event={activeEvent}
+              isPool={activeEvent.type === 'pool'}
+              isDragging={true}
+            />
+          )}
+        </DragOverlay>
+      </DndContext>
+
       {editingEvent && (
         <EventDialog
           key={editingEvent.id}

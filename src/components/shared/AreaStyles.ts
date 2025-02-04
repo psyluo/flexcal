@@ -1,13 +1,19 @@
 import styled from 'styled-components';
 
-export const AreaContainer = styled.div`
+export const AreaContainer = styled.div.attrs({
+  className: 'area-container'
+})`
+  display: flex;
+  flex-direction: column;
   border: 1px solid #e0e0e0;
-  background: white;
   border-radius: 4px;
-  overflow: hidden;
+  position: relative;
+  overflow: visible;
 `;
 
-export const AreaHeader = styled.div`
+export const AreaHeader = styled.div.attrs({
+  className: 'area-header'
+})`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -16,12 +22,30 @@ export const AreaHeader = styled.div`
   background-color: #fafafa;
 `;
 
-export const AreaTitle = styled.div`
+export const AreaContent = styled.div.attrs({
+  className: 'area-content'
+})`
+  background-color: white;
+  min-height: 200px;
+  max-height: 400px;
+  padding: 12px;
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+`;
+
+export const AreaTitle = styled.div.attrs({
+  className: 'area-title'
+})`
   font-size: 16px;
   font-weight: 500;
 `;
 
-export const AddButton = styled.button`
+export const AddButton = styled.button.attrs({
+  className: 'add-button'
+})`
   width: 24px;
   height: 24px;
   border-radius: 12px;
@@ -39,9 +63,4 @@ export const AddButton = styled.button`
   &:hover {
     background-color: #d4d4d4;
   }
-`;
-
-export const AreaContent = styled.div`
-  padding: 16px;
-  min-height: 80px;
 `; 

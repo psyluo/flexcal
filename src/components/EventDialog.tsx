@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { CalendarEvent } from '../types';
 import { format, addMinutes, parse } from 'date-fns';
@@ -72,6 +72,60 @@ const FormColumn = styled.div`
   flex: 1;
 `;
 
+const DialogHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+`;
+
+const DialogBody = styled.div`
+  margin-bottom: 24px;
+`;
+
+const DialogFooter = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const DeleteButton = styled.button`
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+`;
+
+const SaveButton = styled.button`
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background: #0d6efd;
+  color: white;
+  cursor: pointer;
+  margin-left: auto;
+
+  &:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+  }
+`;
+
+const Select = styled.select`
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+`;
+
 interface EventDialogProps {
   event: CalendarEvent;
   onClose: () => void;
@@ -83,142 +137,96 @@ const EventDialog: React.FC<EventDialogProps> = ({
   event,
   onClose,
   onSave,
-  onDelete
+  onDelete,
 }) => {
-  console.log('EventDialog: rendering with props:', { event, onClose, onSave, onDelete });
+  const [title, setTitle] = useState(event.title);
+  const [date, setDate] = useState(event.date?.toISOString().split('T')[0] || '');
+  const [startTime, setStartTime] = useState(event.startTime || '');
+  const [duration, setDuration] = useState(event.duration || 30);
+  const [roughTime, setRoughTime] = useState(event.roughTime || '');
 
-  if (!event) {
-    console.error('EventDialog: No event provided');
-    return null;
-  }
-
-  React.useEffect(() => {
-    console.log('EventDialog: mounted');
-    document.body.style.overflow = 'hidden';
-    return () => {
-      console.log('EventDialog: unmounted');
-      document.body.style.overflow = 'auto';
-    };
-  }, []);
-
-  const [title, setTitle] = React.useState(event.title);
-  const [date, setDate] = React.useState(format(new Date(event.date), 'yyyy-MM-dd'));
-  const [startTime, setStartTime] = React.useState(event.startTime || '');
-  const [duration, setDuration] = React.useState(event.duration?.toString() || '30');
-
-  // 计算结束时间
-  const endTime = React.useMemo(() => {
-    if (!startTime) return '';
-    try {
-      const [hours, minutes] = startTime.split(':').map(Number);
-      const startDate = new Date();
-      startDate.setHours(hours, minutes, 0);
-      const endDate = addMinutes(startDate, parseInt(duration));
-      return format(endDate, 'HH:mm');
-    } catch (e) {
-      return '';
-    }
-  }, [startTime, duration]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSave = () => {
     const updatedEvent: CalendarEvent = {
       ...event,
       title,
-      date: new Date(date),
-      duration: parseInt(duration)
+      duration,
+      ...(date ? { date: new Date(date) } : {}),
+      ...(startTime ? { startTime } : {}),
+      ...(roughTime ? { roughTime } : {})
     };
-
-    // 如果有开始时间，设置为 scheduled 类型
-    if (startTime) {
-      updatedEvent.type = 'scheduled';
-      updatedEvent.startTime = startTime;
-    } else {
-      updatedEvent.type = 'pool';
-      delete updatedEvent.startTime;
-    }
-
     onSave(updatedEvent);
   };
 
   return (
     <DialogOverlay onClick={onClose}>
       <DialogContent onClick={e => e.stopPropagation()}>
-        <h2 style={{ marginTop: 0, marginBottom: 16 }}>Edit Event</h2>
-        <form onSubmit={handleSubmit}>
+        <DialogHeader>
+          <h2>{event.id.startsWith('new-') ? 'New Event' : 'Edit Event'}</h2>
+          <CloseButton onClick={onClose}>&times;</CloseButton>
+        </DialogHeader>
+
+        <DialogBody>
           <FormGroup>
             <Label>Title *</Label>
             <Input
-              type="text"
               value={title}
-              onChange={e => setTitle(e.target.value)}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Event title"
               required
             />
           </FormGroup>
 
-          <FormRow>
-            <FormColumn>
-              <FormGroup>
-                <Label>Date *</Label>
-                <Input
-                  type="date"
-                  value={date}
-                  onChange={e => setDate(e.target.value)}
-                  required
-                />
-              </FormGroup>
-            </FormColumn>
-            <FormColumn>
-              <FormGroup>
-                <Label>Start Time</Label>
-                <Input
-                  type="time"
-                  value={startTime}
-                  onChange={e => setStartTime(e.target.value)}
-                  step="900" // 15分钟步进
-                />
-              </FormGroup>
-            </FormColumn>
-          </FormRow>
+          <FormGroup>
+            <Label>Date</Label>
+            <Input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </FormGroup>
 
-          <FormRow>
-            <FormColumn>
-              <FormGroup>
-                <Label>Duration (minutes) *</Label>
-                <Input
-                  type="number"
-                  value={duration}
-                  onChange={e => setDuration(e.target.value)}
-                  min="15"
-                  step="15"
-                  required
-                />
-              </FormGroup>
-            </FormColumn>
-            <FormColumn>
-              <FormGroup>
-                <Label>End Time</Label>
-                <Input
-                  type="time"
-                  value={endTime}
-                  disabled
-                />
-              </FormGroup>
-            </FormColumn>
-          </FormRow>
+          <FormGroup>
+            <Label>Start Time</Label>
+            <Input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+          </FormGroup>
 
-          <ButtonGroup>
-            <Button type="submit">Save</Button>
-            <Button 
-              type="button" 
-              $danger 
-              onClick={() => onDelete(event.id)}
+          <FormGroup>
+            <Label>Duration (minutes) *</Label>
+            <Input
+              type="number"
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              min="1"
+              required
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Rough Time</Label>
+            <Select
+              value={roughTime}
+              onChange={(e) => setRoughTime(e.target.value)}
             >
+              <option value="">Select time</option>
+              <option value="this-week">This Week</option>
+            </Select>
+          </FormGroup>
+        </DialogBody>
+
+        <DialogFooter>
+          {!event.id.startsWith('new-') && (
+            <DeleteButton onClick={() => onDelete(event.id)}>
               Delete
-            </Button>
-          </ButtonGroup>
-        </form>
+            </DeleteButton>
+          )}
+          <SaveButton onClick={handleSave} disabled={!title || !duration}>
+            Save
+          </SaveButton>
+        </DialogFooter>
       </DialogContent>
     </DialogOverlay>
   );
