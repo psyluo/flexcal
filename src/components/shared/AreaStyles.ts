@@ -35,6 +35,8 @@ export const AreaContent = styled.div.attrs({
   display: flex;
   flex-direction: column;
   transition: background-color 0.2s;
+  height: 100%;
+  width: 100%;
 
   &:hover {
     background-color: #f8f8f8;
@@ -67,5 +69,23 @@ export const AddButton = styled.button.attrs({
   
   &:hover {
     background-color: #d4d4d4;
+  }
+`;
+
+export const EventListContainer = styled.div.attrs({
+  className: 'event-list-container'
+})<EventListContainerProps>`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  padding: 4px;
+  background-color: ${props => props.$isOver ? 'rgba(0, 0, 0, 0.05)' : 'transparent'};
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #f8f8f8;
   }
 `; 

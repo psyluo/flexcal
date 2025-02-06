@@ -2,6 +2,7 @@ import React from 'react';
 import { CalendarEvent } from '../types';
 import { AreaContainer, AreaHeader, AreaTitle, AreaContent, AddButton } from './shared/AreaStyles';
 import EventList from './shared/EventList';
+import { useDroppable } from '@dnd-kit/core';
 
 interface ThisWeekAreaProps {
   events: CalendarEvent[];
@@ -14,13 +15,23 @@ const ThisWeekArea: React.FC<ThisWeekAreaProps> = ({
   onEditEvent,
   onCreateEvent,
 }) => {
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'thisWeek-area',
+    data: { type: 'thisWeek' }
+  });
+
   return (
-    <AreaContainer data-testid="this-week-area">
-      <AreaHeader data-testid="this-week-header">
+    <AreaContainer>
+      <AreaHeader>
         <AreaTitle>This Week</AreaTitle>
         <AddButton onClick={onCreateEvent}>+</AddButton>
       </AreaHeader>
-      <AreaContent data-testid="this-week-content">
+      <AreaContent 
+        ref={setNodeRef}
+        style={{
+          backgroundColor: isOver ? 'rgba(0, 0, 0, 0.05)' : undefined
+        }}
+      >
         <EventList
           events={events}
           onEditEvent={onEditEvent}

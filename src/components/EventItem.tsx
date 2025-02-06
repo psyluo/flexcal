@@ -24,6 +24,7 @@ const EventItemContainer = styled.div<EventItemContainerProps>`
         margin: 0 8px;
         padding: 4px 8px;
         background-color: #e3f2fd;
+        border: 1px solid #1976d2;  // 添加深蓝色边框
       `;
     } else {
       // Pool、ThisWeek 和 General 事件共用样式
@@ -31,9 +32,10 @@ const EventItemContainer = styled.div<EventItemContainerProps>`
         position: relative;
         width: calc(100% - 16px);
         margin: 4px 8px;
-        min-height: 40px;
+        min-height: ${HOUR_HEIGHT / 2}px;
         padding: 4px 8px;
         background-color: #e3f2fd;
+        border: 1px solid #1976d2;  // 添加深蓝色边框
       `;
     }
   }}
