@@ -51,6 +51,8 @@ const EventList: React.FC<EventListProps> = ({
   onEditEvent,
   areaType,
 }) => {
+  console.log(`EventList (${areaType}): rendering with onEditEvent:`, !!onEditEvent);
+
   const { setNodeRef, isOver } = useDroppable({
     id: `${areaType}-area`,
     data: { type: areaType }

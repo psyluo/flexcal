@@ -5,9 +5,7 @@ import {
   DndContext, 
   DragEndEvent,
   DragOverlay,
-  defaultDropAnimationSideEffects,
   DragStartEvent,
-  DragMoveEvent,
   Active,
   Over,
   Modifier,
@@ -240,6 +238,11 @@ const Calendar: React.FC = () => {
   };
 
   const handleEditEvent = (event: CalendarEvent) => {
+    console.log('handleEditEvent called with:', {
+      event,
+      currentEditingEvent: editingEvent,  // 添加当前编辑状态
+      willSetEditingEvent: event
+    });
     setEditingEvent(event);
   };
 
@@ -391,12 +394,17 @@ const Calendar: React.FC = () => {
           </div>
         </ContentContainer>
 
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
           {activeEvent && (
             <EventItem 
               event={activeEvent}
               isPool={activeEvent.type === 'pool'}
               isDragging={true}
+              style={{
+                width: 'auto',
+                position: 'relative',
+                transform: 'none',
+              }}
             />
           )}
         </DragOverlay>
@@ -406,8 +414,12 @@ const Calendar: React.FC = () => {
         <EventDialog
           key={editingEvent.id}
           event={editingEvent}
-          onClose={() => setEditingEvent(null)}
+          onClose={() => {
+            console.log('Dialog closing');  // 添加日志
+            setEditingEvent(null);
+          }}
           onSave={(event) => {
+            console.log('Saving event:', event);  // 添加日志
             if (event.id.startsWith('new-')) {
               setEvents(prev => [...prev, { ...event, id: `event-${Date.now()}` }]);
             } else {

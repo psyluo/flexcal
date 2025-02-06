@@ -108,26 +108,18 @@ interface WeekViewProps {
   onResizeEvent: (event: CalendarEvent, newStartTime?: string, newDuration?: number) => void;
 }
 
-const WeekView: React.FC<WeekViewProps> = ({ events, dates, onEditEvent, onCreateEvent, onResizeEvent }) => {
-  console.log('WeekView: rendering with onEditEvent:', !!onEditEvent);
-
+const WeekView: React.FC<WeekViewProps> = ({
+  events,
+  dates,
+  onEditEvent,
+  onCreateEvent,
+  onResizeEvent,
+}) => {
   // 生成48个半小时块
-  const timeBlocks: TimeBlock[] = Array.from({ length: 48 }, (_, index) => {
-    const block = {
-      hour: Math.floor(index / 2),
-      minute: (index % 2) * 30
-    };
-    
-    // 添加调试信息
-    console.log(`Time block ${index}:`, {
-      index,
-      hour: block.hour,
-      minute: block.minute,
-      displayTime: `${block.hour}:${block.minute}`
-    });
-    
-    return block;
-  });
+  const timeBlocks: TimeBlock[] = Array.from({ length: 48 }, (_, index) => ({
+    hour: Math.floor(index / 2),
+    minute: (index % 2) * 30
+  }));
 
   // 格式化时间显示
   const formatTimeLabel = (block: TimeBlock): string => {
@@ -138,16 +130,6 @@ const WeekView: React.FC<WeekViewProps> = ({ events, dates, onEditEvent, onCreat
 
   const handleTimeBlockClick = (date: Date, block: TimeBlock) => {
     onCreateEvent(date, block);
-  };
-
-  const handleTimeBlockHover = (block: TimeBlock, index: number) => {
-    console.log('Hover time block:', {
-      index,
-      hour: block.hour,
-      minute: block.minute,
-      formattedTime: `${block.hour.toString().padStart(2, '0')}:${block.minute.toString().padStart(2, '0')}`,
-      position: `${index * (HOUR_HEIGHT / 2)}px`
-    });
   };
 
   return (
@@ -183,7 +165,6 @@ const WeekView: React.FC<WeekViewProps> = ({ events, dates, onEditEvent, onCreat
                   data-minute={block.minute}
                   data-index={index}
                   onClick={() => handleTimeBlockClick(date, block)}
-                  onMouseEnter={() => handleTimeBlockHover(block, index)}
                   style={{
                     position: 'absolute',
                     top: `${index * (HOUR_HEIGHT / 2)}px`,

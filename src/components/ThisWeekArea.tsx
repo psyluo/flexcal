@@ -15,6 +15,8 @@ const ThisWeekArea: React.FC<ThisWeekAreaProps> = ({
   onEditEvent,
   onCreateEvent,
 }) => {
+  console.log('ThisWeekArea: rendering with onEditEvent:', !!onEditEvent);
+
   const { setNodeRef, isOver } = useDroppable({
     id: 'thisWeek-area',
     data: { type: 'thisWeek' }

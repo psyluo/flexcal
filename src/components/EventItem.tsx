@@ -11,6 +11,38 @@ interface EventItemContainerProps {
   $isDragging?: boolean;
 }
 
+const EditButtonWrapper = styled.div`
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1000;
+  pointer-events: auto;
+`;
+
+const EditButton = styled.button`
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background-color: #f5f5f5;
+  color: #1976d2;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background-color: #e0e0e0;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+`;
+
 const EventItemContainer = styled.div<EventItemContainerProps>`
   ${props => {
     if (props.$top !== undefined && props.$height !== undefined) {
@@ -24,7 +56,8 @@ const EventItemContainer = styled.div<EventItemContainerProps>`
         margin: 0 8px;
         padding: 4px 8px;
         background-color: #e3f2fd;
-        border: 1px solid #1976d2;  // 添加深蓝色边框
+        border: 1px solid #1976d2;
+        opacity: ${props.$isDragging ? 0.3 : 1};
       `;
     } else {
       // Pool、ThisWeek 和 General 事件共用样式
@@ -35,7 +68,7 @@ const EventItemContainer = styled.div<EventItemContainerProps>`
         min-height: ${HOUR_HEIGHT / 2}px;
         padding: 4px 8px;
         background-color: #e3f2fd;
-        border: 1px solid #1976d2;  // 添加深蓝色边框
+        border: 1px solid #1976d2;
       `;
     }
   }}
@@ -44,9 +77,14 @@ const EventItemContainer = styled.div<EventItemContainerProps>`
   cursor: pointer;
   user-select: none;
   z-index: ${props => props.$isDragging ? 9999 : 1};
+  pointer-events: auto;  // 确保容器可以接收事件
 
   &:hover {
     background-color: #bbdefb;
+  }
+
+  &:hover ${EditButton} {
+    opacity: 1;
   }
 `;
 
@@ -74,17 +112,14 @@ const DraggableArea = styled.div`
   position: relative;
   height: 100%;
   width: 100%;
+  pointer-events: auto;  // 改为 auto
 `;
 
 const EventContent = styled.div`
   display: flex;
   flex-direction: column;
   gap: 4px;
-  ${props => props.$isScheduled && `
-    position: relative;
-    height: 100%;
-    pointer-events: none;
-  `}
+  pointer-events: auto;  // 确保内容可以点击
 `;
 
 interface EventItemProps {
@@ -93,219 +128,81 @@ interface EventItemProps {
   isDragging?: boolean;
   onEdit?: (event: CalendarEvent) => void;
   onResize?: (event: CalendarEvent, newStartTime?: string, newDuration?: number) => void;
+  style?: React.CSSProperties;
 }
+
+// 添加这些辅助函数
+const calculateTop = (startTime?: string): number | undefined => {
+  if (!startTime) return undefined;
+  
+  const [hours, minutes] = startTime.split(':').map(Number);
+  const totalMinutes = hours * 60 + minutes;
+  return totalMinutes * (HOUR_HEIGHT / 60);  // 更精确的计算
+};
+
+const calculateHeight = (duration?: number): number | undefined => {
+  if (!duration) return undefined;
+  return duration * (HOUR_HEIGHT / 60);  // 更精确的计算
+};
 
 const EventItem: React.FC<EventItemProps> = ({
   event,
   isPool = false,
   isDragging = false,
   onEdit,
-  onResize
+  onResize,
+  style,
 }) => {
-  // 使用 ref 来追踪 resize 状态，避免异步更新问题
-  const resizeRef = React.useRef({
-    isResizing: false,
-    startY: 0,
-    startMinutes: 0,
-    startDuration: 0,
-    handle: '' as 'top' | 'bottom' | ''
-  });
-
-  const handleResizeStart = (e: React.MouseEvent, handle: 'top' | 'bottom') => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // 计算初始时间
-    const [hours, minutes] = (event.startTime || '00:00').split(':').map(Number);
-    const startMinutes = hours * 60 + minutes;
-    
-    resizeRef.current = {
-      isResizing: true,
-      startY: e.clientY,
-      startMinutes,
-      startDuration: event.duration || 30,
-      handle
-    };
-    
-    document.addEventListener('mousemove', handleResizeMove);
-    document.addEventListener('mouseup', handleResizeEnd);
-  };
-
-  const handleResizeMove = (e: MouseEvent) => {
-    if (!resizeRef.current.isResizing || !onResize) {
-      console.log('Resize move ignored:', { 
-        isResizing: resizeRef.current.isResizing, 
-        hasOnResize: !!onResize 
-      });
-      return;
-    }
-    
-    const dy = e.clientY - resizeRef.current.startY;
-    const dMinutes = Math.round(dy / (HOUR_HEIGHT / 2)) * 30;
-    
-    console.log('Resize move:', {
-      dy,
-      dMinutes,
-      handle: resizeRef.current.handle,
-      startDuration: resizeRef.current.startDuration,
-      startMinutes: resizeRef.current.startMinutes
-    });
-
-    if (resizeRef.current.handle === 'bottom') {
-      // 拖动底部：只改变持续时间
-      const newDuration = Math.max(30, resizeRef.current.startDuration + dMinutes);
-      console.log('Bottom resize:', { newDuration });
-      onResize(event, undefined, newDuration);
-    } else {
-      // 拖动顶部：同时改变开始时间和持续时间
-      const newStartMinutes = resizeRef.current.startMinutes + dMinutes;
-      const newDuration = resizeRef.current.startDuration - dMinutes;
-      
-      console.log('Top resize:', { newStartMinutes, newDuration });
-      
-      if (newStartMinutes >= 0 && newStartMinutes < 24 * 60 && newDuration >= 30) {
-        const hours = Math.floor(newStartMinutes / 60);
-        const minutes = newStartMinutes % 60;
-        const newStartTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-        onResize(event, newStartTime, newDuration);
-      }
-    }
-  };
-
-  const handleResizeEnd = () => {
-    console.log('Resize end');
-    resizeRef.current.isResizing = false;
-    document.removeEventListener('mousemove', handleResizeMove);
-    document.removeEventListener('mouseup', handleResizeEnd);
-  };
-
-  // 使用 ref 来保存最新的 onEdit 函数
-  const onEditRef = React.useRef(onEdit);
-  
-  // 更新 ref 当 onEdit 改变时
-  React.useEffect(() => {
-    onEditRef.current = onEdit;
-  }, [onEdit]);
-
-  console.log('EventItem rendering:', { 
-    eventId: event.id, 
-    hasOnEdit: !!onEdit 
-  });
-
-  // 使用 ref 来追踪点击状态
-  const clickRef = React.useRef({
-    isClick: true,
-    timeout: null as any
-  });
-
   const {attributes, listeners, setNodeRef, transform} = useDraggable({
     id: event.id,
-    data: {
-      event,
-      type: event.type
-    }
+    data: { event }
   });
 
-  // 分离拖拽和点击事件
-  const eventHandlers = React.useMemo(() => ({
-    onMouseDown: (e: React.MouseEvent) => {
-      clickRef.current.isClick = true;
-      // 设置一个短暂的延时，如果在这个时间内发生移动，则不是点击
-      clickRef.current.timeout = setTimeout(() => {
-        clickRef.current.isClick = false;
-      }, 200);
-      listeners.onMouseDown?.(e as any);
-    },
-    onMouseMove: (e: React.MouseEvent) => {
-      if (clickRef.current.isClick) {
-        clickRef.current.isClick = false;
-        clearTimeout(clickRef.current.timeout);
-      }
-      listeners.onMouseMove?.(e as any);
-    },
-    onMouseUp: (e: React.MouseEvent) => {
-      clearTimeout(clickRef.current.timeout);
-      if (clickRef.current.isClick) {
-        console.log('EventItem click detected:', { 
-          eventId: event.id,
-          hasOnEdit: !!onEditRef.current
-        });
-        e.stopPropagation();
-        if (onEditRef.current) {
-          onEditRef.current(event);
-        }
-      }
-      listeners.onMouseUp?.(e as any);
-    }
-  }), [event, listeners]);
-
-  const getEventPosition = () => {
-    if (isPool || isDragging) return {};
-    
-    const startMinutes = event.startTime ? 
-      parseInt(event.startTime.split(':')[0]) * 60 + parseInt(event.startTime.split(':')[1]) 
-      : 0;
-    
-    const duration = event.duration || 30;
-    const blockHeight = HOUR_HEIGHT / 2;
-    const blockIndex = startMinutes / 30;
-    
-    return {
-      top: blockIndex * blockHeight,
-      height: (duration / 30) * blockHeight
-    };
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit?.(event);
   };
-
-  const { top, height } = getEventPosition();
-
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    opacity: isDragging ? 0.5 : undefined,
-  } : undefined;
 
   return (
     <EventItemContainer
-      ref={setNodeRef}
-      $top={top}
-      $height={height}
       $isPool={isPool}
       $isDragging={isDragging}
-      style={style}
+      $top={!isDragging && event.type === 'scheduled' ? calculateTop(event.startTime) : undefined}
+      $height={event.type === 'scheduled' ? calculateHeight(event.duration) : undefined}
     >
-      {!isPool && (
-        <>
-          <ResizeHandle 
-            $position="top"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleResizeStart(e, 'top');
-            }}
-          />
-          <ResizeHandle 
-            $position="bottom"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleResizeStart(e, 'bottom');
-            }}
-          />
-        </>
-      )}
-      <DraggableArea
+      <EditButtonWrapper>
+        <EditButton onClick={handleEditClick}>
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z" />
+          </svg>
+        </EditButton>
+      </EditButtonWrapper>
+      <div
+        ref={setNodeRef}
         {...attributes}
-        {...eventHandlers}
         {...listeners}
-        data-testid={`event-item-${event.id}`}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          ...style,
+          ...(isDragging ? {} : transform ? {
+            transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+          } : {})
+        }}
       >
-        <EventContent>
-          <div>{event.title}</div>
-          <div style={{ fontSize: '12px', color: '#666' }}>
-            {event.startTime && `${event.startTime}, `}
-            {event.duration && `${event.duration}min`}
-          </div>
-        </EventContent>
-      </DraggableArea>
+        <DraggableArea>
+          <EventContent>
+            <div>{event.title}</div>
+            <div style={{ fontSize: '12px', color: '#666' }}>
+              {event.startTime && `${event.startTime}, `}
+              {event.duration && `${event.duration}min`}
+            </div>
+          </EventContent>
+        </DraggableArea>
+      </div>
     </EventItemContainer>
   );
 };

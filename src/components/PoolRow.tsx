@@ -42,7 +42,6 @@ interface PoolRowProps {
 }
 
 const PoolRow: React.FC<PoolRowProps> = ({ events, dates, onEditEvent, onCreateEvent }) => {
-  console.log('PoolRow: received onEditEvent prop:', !!onEditEvent);
   return (
     <PoolContainer>
       <PoolLabel>Pool</PoolLabel>
@@ -70,7 +69,6 @@ const PoolRow: React.FC<PoolRowProps> = ({ events, dates, onEditEvent, onCreateE
                   event={event} 
                   isPool={true}
                   onEdit={(e) => {
-                    console.log('PoolRow: onEdit called', e);
                     onEditEvent(e);
                   }}
                 />
