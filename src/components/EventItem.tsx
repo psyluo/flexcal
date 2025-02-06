@@ -45,47 +45,41 @@ const EditButton = styled.button`
 
 const EventItemContainer = styled.div<EventItemContainerProps>`
   ${props => {
+    // 所有事件共用的基础样式
+    const baseStyles = `
+      width: calc(100% - 16px);  // 保持一致的宽度计算
+      margin: 0 8px;             // 两边 8px 外边距实现居中
+      padding: 4px 8px;
+      box-sizing: border-box;
+      background-color: #e3f2fd;
+      border: 1px solid #1976d2;
+      ${props.$isDragging ? `
+        opacity: 0.3;
+        border-style: dashed;
+      ` : `
+        opacity: 1;
+        border-style: solid;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      `}
+    `;
+
     if (props.$top !== undefined && props.$height !== undefined) {
-      // scheduled 事件的样式
+      // scheduled 事件特有的样式
       return `
+        ${baseStyles}
         position: absolute;
         top: ${props.$top}px;
         height: ${props.$height}px;
         left: 0;
         right: 0;
-        margin: 0 8px;
-        padding: 4px 8px;
-        background-color: #e3f2fd;
-        border: 1px solid #1976d2;
-        transform: ${props.$isDragging ? 'none' : 'translate3d(0, 0, 0)'};
-        ${props.$isDragging ? `
-          opacity: 0.3;
-          border-style: dashed;
-        ` : `
-          opacity: 1;
-          border-style: solid;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-        `}
       `;
     } else {
-      // Pool、ThisWeek 和 General 事件共用样式
+      // Pool、ThisWeek 和 General 事件的样式
       return `
+        ${baseStyles}
         position: relative;
-        width: 100%;
-        box-sizing: border-box;
-        margin: 4px 0;
-        padding: 4px 8px;
         min-height: ${HOUR_HEIGHT / 2}px;
-        background-color: #e3f2fd;
-        border: 1px solid #1976d2;
-        ${props.$isDragging ? `
-          opacity: 0.3;
-          border-style: dashed;
-        ` : `
-          opacity: 1;
-          border-style: solid;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-        `}
+        margin: 4px 8px;  // 保持垂直间距
       `;
     }
   }}
@@ -159,7 +153,9 @@ interface EventItemProps {
 
 const calculateHeight = (duration?: number): number | undefined => {
   if (!duration) return undefined;
-  return duration * (HOUR_HEIGHT / 60);  // 更精确的计算
+  // 一个格子是 30 分钟，高度是 HOUR_HEIGHT / 2
+  // 所以 duration 分钟对应的高度应该是 duration * (HOUR_HEIGHT / 2) / 30
+  return (duration * HOUR_HEIGHT) / 60;  // 修正：除以 60 而不是 30
 };
 
 const EventItem: React.FC<EventItemProps> = ({

@@ -38,14 +38,14 @@ const SidebarContainer = styled.div`
 const ContentContainer = styled.div`
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: 300px 1fr;  // 修改这里：增加侧边区域宽度到 300px
   min-width: 0;
   overflow: hidden;
-  gap: 32px;  // 从 16px 增加到 32px，增加列间距
+  gap: 32px;  // 保持列间距
 `;
 
 const SideAreaContainer = styled.div`
-  width: 100%;
+  width: 100%;  // 占满分配的宽度
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -373,7 +373,7 @@ const Calendar: React.FC = () => {
           </SideAreaContainer>
 
           {/* 日历主体部分占用剩余6列 */}
-          <div style={{ gridColumn: '2 / 8' }}>
+          <div style={{ gridColumn: '2' }}>
             <MainContainer>
               <WeekSwitcher
                 currentDate={currentDate}
