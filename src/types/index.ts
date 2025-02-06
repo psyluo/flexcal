@@ -8,13 +8,12 @@ export interface TimeBlock {
 
 export interface CalendarEvent {
   id: string;
-  title: string;                // 必填
-  duration: number;             // 必填，默认30分钟
-  date?: Date;                  // scheduled 和 pool 必填
-  startTime?: string;           // scheduled 必填
-  endTime?: string;             // 选填，格式 "HH:mm"
-  roughTime?: 'this-week';      // thisWeek 必填
-  type: EventType;              // 必填
+  title: string;
+  description?: string;
+  type: EventType;
+  date?: string;        // YYYY-MM-DD 格式
+  startTime?: string;   // HH:mm 格式
+  duration?: number;    // 分钟
 }
 
 export interface DragState {

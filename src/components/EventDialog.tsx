@@ -1,136 +1,47 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { CalendarEvent } from '../types';
-import { format, addMinutes, parse } from 'date-fns';
+import { Dialog, DialogContent, TextField, DialogActions, Button, FormControlLabel, Checkbox } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { CalendarEvent, EventType } from '../types';
+import { format } from 'date-fns';
 
-const DialogOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+const ClearButton = styled.button`
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
-`;
-
-const DialogContent = styled.div`
-  background: white;
-  padding: 24px;
-  border-radius: 8px;
-  min-width: 400px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 0 0 4px #4CAF50;
-  position: relative;
-  z-index: 10000;
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: 16px;
-`;
-
-const Label = styled.label`
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin-top: 24px;
-`;
-
-const Button = styled.button<{ $danger?: boolean }>`
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  background: ${props => props.$danger ? '#dc3545' : '#0d6efd'};
-  color: white;
-  cursor: pointer;
+  padding: 0;
+  margin-left: 8px;
 
   &:hover {
-    background: ${props => props.$danger ? '#c82333' : '#0b5ed7'};
+    color: #f44336;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
   }
 `;
 
-const FormRow = styled.div`
+const FieldWrapper = styled.div`
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
-`;
-
-const FormColumn = styled.div`
-  flex: 1;
-`;
-
-const DialogHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-`;
-
-const DialogBody = styled.div`
-  margin-bottom: 24px;
-`;
-
-const DialogFooter = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const DeleteButton = styled.button`
-  background: none;
-  border: none;
-  color: #dc3545;
-  cursor: pointer;
-`;
-
-const SaveButton = styled.button`
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  background: #0d6efd;
-  color: white;
-  cursor: pointer;
-  margin-left: auto;
-
-  &:disabled {
-    background: #6c757d;
-    cursor: not-allowed;
-  }
-`;
-
-const Select = styled.select`
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: white;
 `;
 
 interface EventDialogProps {
   event: CalendarEvent;
   onClose: () => void;
   onSave: (event: CalendarEvent) => void;
-  onDelete: (eventId: string) => void;
+  onDelete?: (event: CalendarEvent) => void;
 }
 
 const EventDialog: React.FC<EventDialogProps> = ({
@@ -140,95 +51,131 @@ const EventDialog: React.FC<EventDialogProps> = ({
   onDelete,
 }) => {
   const [title, setTitle] = useState(event.title);
-  const [date, setDate] = useState(event.date?.toISOString().split('T')[0] || '');
+  const [description, setDescription] = useState(event.description || '');
+  const [date, setDate] = useState<Date | null>(event.date ? new Date(event.date) : null);
   const [startTime, setStartTime] = useState(event.startTime || '');
   const [duration, setDuration] = useState(event.duration || 30);
-  const [roughTime, setRoughTime] = useState(event.roughTime || '');
+  const [isThisWeek, setIsThisWeek] = useState(event.type === 'thisWeek');
+
+  // 根据当前状态推导事件类型
+  const deriveEventType = (
+    hasDate: boolean,
+    hasTime: boolean,
+    isThisWeek: boolean
+  ): EventType => {
+    if (hasDate && hasTime) return 'scheduled';
+    if (hasDate) return 'pool';
+    if (isThisWeek) return 'thisWeek';
+    return 'general';
+  };
 
   const handleSave = () => {
-    const updatedEvent: CalendarEvent = {
+    const type = deriveEventType(!!date, !!startTime, isThisWeek);
+    onSave({
       ...event,
       title,
-      duration,
-      ...(date ? { date: new Date(date) } : {}),
-      ...(startTime ? { startTime } : {}),
-      ...(roughTime ? { roughTime } : {})
-    };
-    onSave(updatedEvent);
+      description,
+      type,
+      date: date ? format(date, 'yyyy-MM-dd') : undefined,
+      startTime: startTime || undefined,
+      duration: type === 'scheduled' ? duration : undefined,
+    });
+  };
+
+  const handleThisWeekChange = (checked: boolean) => {
+    setIsThisWeek(checked);
+    if (checked) {
+      // 如果勾选"本周"，清除日期和时间
+      setDate(null);
+      setStartTime('');
+    }
   };
 
   return (
-    <DialogOverlay onClick={onClose}>
-      <DialogContent onClick={e => e.stopPropagation()}>
-        <DialogHeader>
-          <h2>{event.id.startsWith('new-') ? 'New Event' : 'Edit Event'}</h2>
-          <CloseButton onClick={onClose}>&times;</CloseButton>
-        </DialogHeader>
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            margin="normal"
+          />
+          
+          <TextField
+            fullWidth
+            label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            multiline
+            rows={3}
+            margin="normal"
+          />
 
-        <DialogBody>
-          <FormGroup>
-            <Label>Title *</Label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Event title"
-              required
-            />
-          </FormGroup>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isThisWeek}
+                onChange={(e) => handleThisWeekChange(e.target.checked)}
+              />
+            }
+            label="This Week"
+            style={{ marginTop: 16, marginBottom: 16 }}
+          />
 
-          <FormGroup>
-            <Label>Date</Label>
-            <Input
-              type="date"
+          <FieldWrapper>
+            <DatePicker
+              label="Date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={setDate}
+              slotProps={{ textField: { fullWidth: true } }}
             />
-          </FormGroup>
+            <ClearButton onClick={() => setDate(null)}>
+              <svg viewBox="0 0 24 24">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+            </ClearButton>
+          </FieldWrapper>
 
-          <FormGroup>
-            <Label>Start Time</Label>
-            <Input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+          <FieldWrapper>
+            <TimePicker
+              label="Start Time"
+              value={startTime ? new Date(`2000-01-01T${startTime}`) : null}
+              onChange={(date) => setStartTime(date ? format(date, 'HH:mm') : '')}
+              disabled={!date}
+              slotProps={{ textField: { fullWidth: true } }}
             />
-          </FormGroup>
+            <ClearButton onClick={() => setStartTime('')} disabled={!date}>
+              <svg viewBox="0 0 24 24">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+            </ClearButton>
+          </FieldWrapper>
 
-          <FormGroup>
-            <Label>Duration (minutes) *</Label>
-            <Input
-              type="number"
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              min="1"
-              required
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label>Rough Time</Label>
-            <Select
-              value={roughTime}
-              onChange={(e) => setRoughTime(e.target.value)}
-            >
-              <option value="">Select time</option>
-              <option value="this-week">This Week</option>
-            </Select>
-          </FormGroup>
-        </DialogBody>
-
-        <DialogFooter>
-          {!event.id.startsWith('new-') && (
-            <DeleteButton onClick={() => onDelete(event.id)}>
+          <TextField
+            fullWidth
+            label="Duration (minutes)"
+            type="number"
+            value={duration}
+            onChange={(e) => setDuration(Number(e.target.value))}
+            disabled={!date || !startTime}
+            margin="normal"
+          />
+        </DialogContent>
+        <DialogActions>
+          {onDelete && !event.id.startsWith('new-') && (
+            <Button onClick={() => onDelete(event)} color="error">
               Delete
-            </DeleteButton>
+            </Button>
           )}
-          <SaveButton onClick={handleSave} disabled={!title || !duration}>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} variant="contained" disabled={!title}>
             Save
-          </SaveButton>
-        </DialogFooter>
-      </DialogContent>
-    </DialogOverlay>
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </LocalizationProvider>
   );
 };
 

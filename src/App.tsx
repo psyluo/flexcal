@@ -1,6 +1,8 @@
 import React from 'react';
 import styled from 'styled-components';
 import Calendar from './components/Calendar';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
 const AppContainer = styled.div`
   height: 100vh;
@@ -10,9 +12,11 @@ const AppContainer = styled.div`
 
 const App: React.FC = () => {
   return (
-    <AppContainer>
-      <Calendar />
-    </AppContainer>
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <AppContainer>
+        <Calendar />
+      </AppContainer>
+    </LocalizationProvider>
   );
 };
 
