@@ -10,7 +10,7 @@ import {
   Over,
   Modifier,
 } from '@dnd-kit/core';
-import { CalendarEvent, TimeBlock } from '../types';
+import { CalendarEvent, TimeBlock, TimePosition } from '../types';
 import WeekView from './WeekView';
 import PoolRow from './PoolRow';
 import EventItem from './EventItem';
@@ -116,7 +116,7 @@ const Calendar: React.FC = () => {
       id: '1',
       title: 'Meeting with Team',
       duration: 60,
-      date: today,
+      date: format(today, 'yyyy-MM-dd'),
       startTime: '10:00',
       type: 'scheduled'
     },
@@ -124,14 +124,13 @@ const Calendar: React.FC = () => {
       id: '2',
       title: 'Review Documents',
       duration: 30,
-      date: today,
+      date: format(today, 'yyyy-MM-dd'),
       type: 'pool'
     },
     {
       id: '3',
       title: 'Call Client',
       duration: 30,
-      roughTime: 'this-week',
       type: 'thisWeek'
     },
     {
@@ -150,13 +149,39 @@ const Calendar: React.FC = () => {
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
-    const draggedEvent = active.data.current?.event;
-    setActiveEvent(draggedEvent);
+    const draggedEvent = active.data.current?.event as CalendarEvent;
+    
+    if (draggedEvent && draggedEvent.startTime) {
+      const [hours, minutes] = draggedEvent.startTime.split(':').map(Number);
+      const totalMinutes = hours * 60 + minutes;
+      
+      const dragEvent = {
+        ...draggedEvent,
+        _dragMetadata: {
+          originalStartTime: draggedEvent.startTime,
+          originalTotalMinutes: totalMinutes
+        }
+      };
+
+      console.log('=== Drag Start Test ===', {
+        originalEvent: draggedEvent,
+        dragEvent,
+        calculatedPosition: totalMinutes * (HOUR_HEIGHT / 60)
+      });
+
+      setActiveEvent(dragEvent);
+    } else {
+      setActiveEvent(draggedEvent);
+    }
   };
 
-  const snapToGrid = (minutes: number): number => {
-    const snapTo = MINUTES_SNAP;
-    return Math.round(minutes / snapTo) * snapTo;
+  const snapToGrid: Modifier = ({ transform }) => {
+    if (!transform || !activeEvent?.type === 'scheduled') return transform;
+
+    return {
+      ...transform,
+      y: Math.round(transform.y / (HOUR_HEIGHT / 2)) * (HOUR_HEIGHT / 2)  // 对齐到30分钟格子
+    };
   };
 
   const getTimeFromYPosition = (y: number): string => {
@@ -172,16 +197,11 @@ const Calendar: React.FC = () => {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     
-    // 添加调试日志
-    console.log('Drag end:', {
-      active: {
-        id: active.id,
-        data: active.data.current
-      },
-      over: over ? {
-        id: over.id,
-        data: over.data.current
-      } : null
+    console.log('=== Drag End Test ===', {
+      activeEvent: active.data.current?.event,
+      overData: over?.data.current,
+      activeRect: active.rect,
+      overRect: over?.rect
     });
 
     if (!over) {
@@ -189,44 +209,39 @@ const Calendar: React.FC = () => {
       return;
     }
 
-    const draggedEvent = active.data.current?.event as CalendarEvent;
-    const targetType = over.data.current?.type as EventType;
-    const targetDate = over.data.current?.date as Date;
-    const timeBlock = over.data.current?.timeBlock as TimeBlock;
+    const draggedEvent = active.data.current?.event as CalendarEvent & {
+      _dragMetadata?: {
+        originalStartTime: string;
+        originalTotalMinutes: number;
+      }
+    };
 
     if (draggedEvent) {
       const newEvent = { ...draggedEvent };
-      newEvent.type = targetType;
+      delete newEvent._dragMetadata;
 
-      // 根据目标类型设置或清除属性
-      switch (targetType) {
-        case 'scheduled':
-          newEvent.date = targetDate;
-          if (timeBlock) {
-            newEvent.startTime = `${timeBlock.hour.toString().padStart(2, '0')}:${timeBlock.minute.toString().padStart(2, '0')}`;
-          }
-          delete newEvent.roughTime;
-          break;
-        
-        case 'pool':
-          newEvent.date = targetDate;
-          delete newEvent.startTime;
-          delete newEvent.roughTime;
-          break;
-        
-        case 'thisWeek':
-          delete newEvent.date;
-          delete newEvent.startTime;
-          newEvent.roughTime = 'this-week';
-          break;
-        
-        case 'general':
-          delete newEvent.date;
-          delete newEvent.startTime;
-          delete newEvent.roughTime;
-          break;
+      // 获取目标区域类型
+      const targetType = over.data.current?.type as EventType;
+      
+      // 更新事件属性
+      newEvent.type = targetType;
+      
+      // 如果是拖到 pool 区域，清除时间相关信息
+      if (targetType === 'pool') {
+        newEvent.startTime = undefined;
+        newEvent.date = over.data.current?.date;  // 保留日期信息
+      } else if (targetType === 'scheduled') {
+        // scheduled 区域的处理保持不变
+        newEvent.date = over.data.current?.date;
+        if (over.data.current?.position) {
+          const totalMinutes = over.data.current.position.totalMinutes;
+          const hour = Math.floor(totalMinutes / 60);
+          const minute = Math.floor(totalMinutes % 60 / MINUTES_SNAP) * MINUTES_SNAP;
+          newEvent.startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        }
       }
 
+      // 更新事件
       setEvents(prevEvents => 
         prevEvents.map(evt => 
           evt.id === draggedEvent.id ? newEvent : evt
@@ -246,48 +261,43 @@ const Calendar: React.FC = () => {
     setEditingEvent(event);
   };
 
-  const handleCreateEvent = (date?: Date, timeBlock?: TimeBlock, specificType?: EventType) => {
-    let eventType: EventType;
-    if (specificType) {
-      eventType = specificType;
-    } else if (timeBlock) {
-      eventType = 'scheduled';
-    } else if (date) {
-      eventType = 'pool';
-    } else {
-      eventType = 'general';
-    }
-
+  const handleCreateEvent = (date?: Date, timeBlock?: TimeBlock, type: EventType = 'scheduled') => {
     const newEvent: CalendarEvent = {
       id: `new-${Date.now()}`,
-      title: 'New Event',
+      title: '',
+      type,
+      // 只有 scheduled 和 pool 类型才设置日期
+      date: (type === 'scheduled' || type === 'pool') && date ? 
+        format(date, 'yyyy-MM-dd') : 
+        undefined,
+      // 只有 scheduled 类型才设置时间
+      startTime: type === 'scheduled' && timeBlock ? 
+        `${timeBlock.hour.toString().padStart(2, '0')}:${timeBlock.minute.toString().padStart(2, '0')}` : 
+        undefined,
       duration: 30,
-      type: eventType
     };
-
-    if (date) {
-      newEvent.date = date;
-    }
-
-    if (timeBlock) {
-      newEvent.startTime = `${timeBlock.hour.toString().padStart(2, '0')}:${timeBlock.minute.toString().padStart(2, '0')}`;
-    }
-
-    if (eventType === 'thisWeek') {
-      newEvent.roughTime = 'this-week';
-    }
-
     setEditingEvent(newEvent);
   };
 
-  const handleSaveEvent = (updatedEvent: CalendarEvent) => {
-    setEvents(prevEvents =>
-      prevEvents.map(evt =>
-        evt.id === updatedEvent.id ? updatedEvent : evt
-      )
-    );
+  const isSaving = React.useRef(false);
+
+  const handleSaveEvent = React.useCallback((event: CalendarEvent) => {
+    if (isSaving.current) return;
+    isSaving.current = true;
+
+    console.log('Saving event:', event);
+    if (event.id.startsWith('new-')) {
+      const newId = `event-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      setEvents(prev => [...prev, { ...event, id: newId }]);
+    } else {
+      setEvents(prev => prev.map(e => e.id === event.id ? event : e));
+    }
     setEditingEvent(null);
-  };
+
+    setTimeout(() => {
+      isSaving.current = false;
+    }, 100);
+  }, []);
 
   const handleDeleteEvent = (eventId: string) => {
     setEvents(prevEvents => prevEvents.filter(evt => evt.id !== eventId));
@@ -319,13 +329,20 @@ const Calendar: React.FC = () => {
     setCurrentDate(prev => addWeeks(prev, 1));
   };
 
-  const adjustTransparency: Modifier = ({ transform, dragging }) => {
-    return {
-      ...transform,
-      scaleX: 1,
-      scaleY: 1,
-      opacity: dragging ? 0.2 : 1,
-    };
+  // 修改 transform 修改器
+  const adjustTransform = ({ transform }: any) => {
+    if (!transform) return transform;
+
+    // 如果是 scheduled 类型的事件移动到 pool 区域
+    if (activeEvent?.type === 'scheduled') {
+      return {
+        ...transform,
+        // 不再强制 y = 0，允许垂直移动
+        y: Math.round(transform.y / (HOUR_HEIGHT / 2)) * (HOUR_HEIGHT / 2)  // 保持网格对齐
+      };
+    }
+
+    return transform;
   };
 
   return (
@@ -333,10 +350,10 @@ const Calendar: React.FC = () => {
       <DndContext 
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        modifiers={[adjustTransparency]}
+        modifiers={[adjustTransform, snapToGrid]}
       >
         <SidebarContainer>
-          {/* 时间列 */}
+          {/* 删除这里的 WeekSwitcher */}
         </SidebarContainer>
 
         <ContentContainer>
@@ -345,11 +362,13 @@ const Calendar: React.FC = () => {
               events={events.filter(e => e.type === 'thisWeek')}
               onEditEvent={handleEditEvent}
               onCreateEvent={() => handleCreateEvent(undefined, undefined, 'thisWeek')}
+              onClick={() => handleCreateEvent(undefined, undefined, 'thisWeek')}
             />
             <GeneralArea
               events={events.filter(e => e.type === 'general')}
               onEditEvent={handleEditEvent}
               onCreateEvent={() => handleCreateEvent(undefined, undefined, 'general')}
+              onClick={() => handleCreateEvent(undefined, undefined, 'general')}
             />
           </SideAreaContainer>
 
@@ -394,7 +413,7 @@ const Calendar: React.FC = () => {
           </div>
         </ContentContainer>
 
-        <DragOverlay dropAnimation={null}>
+        <DragOverlay dropAnimation={null} modifiers={[snapToGrid]}>
           {activeEvent && (
             <EventItem 
               event={activeEvent}
@@ -402,8 +421,11 @@ const Calendar: React.FC = () => {
               isDragging={true}
               style={{
                 width: 'auto',
-                position: 'relative',
-                transform: 'none',
+                opacity: 0.8,
+                boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+                position: 'absolute',  // 使用绝对定位
+                left: 0,
+                right: 0
               }}
             />
           )}
@@ -414,19 +436,8 @@ const Calendar: React.FC = () => {
         <EventDialog
           key={editingEvent.id}
           event={editingEvent}
-          onClose={() => {
-            console.log('Dialog closing');  // 添加日志
-            setEditingEvent(null);
-          }}
-          onSave={(event) => {
-            console.log('Saving event:', event);  // 添加日志
-            if (event.id.startsWith('new-')) {
-              setEvents(prev => [...prev, { ...event, id: `event-${Date.now()}` }]);
-            } else {
-              setEvents(prev => prev.map(e => e.id === event.id ? event : e));
-            }
-            setEditingEvent(null);
-          }}
+          onClose={() => setEditingEvent(null)}
+          onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
         />
       )}

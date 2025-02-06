@@ -54,7 +54,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
   const [description, setDescription] = useState(event.description || '');
   const [date, setDate] = useState<Date | null>(event.date ? new Date(event.date) : null);
   const [startTime, setStartTime] = useState(event.startTime || '');
-  const [duration, setDuration] = useState(event.duration || 30);
+  const [duration, setDuration] = useState(event.duration?.toString() || '30');
   const [isThisWeek, setIsThisWeek] = useState(event.type === 'thisWeek');
 
   // 根据当前状态推导事件类型
@@ -78,7 +78,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
       type,
       date: date ? format(date, 'yyyy-MM-dd') : undefined,
       startTime: startTime || undefined,
-      duration: type === 'scheduled' ? duration : undefined,
+      duration: parseInt(duration) || 30,
     });
   };
 
@@ -91,9 +91,22 @@ const EventDialog: React.FC<EventDialogProps> = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey && title) {  // 确保有标题且不是在多行文本框中按Shift+Enter
+      e.preventDefault();
+      handleSave();
+    }
+  };
+
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
+      <Dialog 
+        open 
+        onClose={onClose} 
+        maxWidth="sm" 
+        fullWidth
+        onKeyDown={handleKeyDown}
+      >
         <DialogContent>
           <TextField
             fullWidth
@@ -101,6 +114,13 @@ const EventDialog: React.FC<EventDialogProps> = ({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             margin="normal"
+            // 在标题输入框中按Enter也会触发保存
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && title) {
+                e.preventDefault();
+                handleSave();
+              }
+            }}
           />
           
           <TextField
@@ -111,6 +131,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
             multiline
             rows={3}
             margin="normal"
+            // 多行文本框不处理Enter键，保持换行功能
           />
 
           <FormControlLabel
@@ -158,8 +179,15 @@ const EventDialog: React.FC<EventDialogProps> = ({
             label="Duration (minutes)"
             type="number"
             value={duration}
-            onChange={(e) => setDuration(Number(e.target.value))}
-            disabled={!date || !startTime}
+            onChange={(e) => {
+              const value = e.target.value;
+              // 允许空字符串，但不允许前导零
+              if (value === '') {
+                setDuration('');
+              } else {
+                setDuration(parseInt(value).toString());
+              }
+            }}
             margin="normal"
           />
         </DialogContent>

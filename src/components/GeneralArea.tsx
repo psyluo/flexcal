@@ -8,12 +8,14 @@ interface GeneralAreaProps {
   events: CalendarEvent[];
   onEditEvent: (event: CalendarEvent) => void;
   onCreateEvent: () => void;
+  onClick: () => void;
 }
 
 const GeneralArea: React.FC<GeneralAreaProps> = ({
   events,
   onEditEvent,
   onCreateEvent,
+  onClick,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: 'general-area',
@@ -21,10 +23,13 @@ const GeneralArea: React.FC<GeneralAreaProps> = ({
   });
 
   return (
-    <AreaContainer>
+    <AreaContainer onClick={onClick}>
       <AreaHeader>
         <AreaTitle>General</AreaTitle>
-        <AddButton onClick={onCreateEvent}>+</AddButton>
+        <AddButton onClick={(e) => {
+          e.stopPropagation();
+          onCreateEvent();
+        }}>+</AddButton>
       </AreaHeader>
       <AreaContent 
         ref={setNodeRef}

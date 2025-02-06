@@ -6,6 +6,17 @@ export interface TimeBlock {
   minute: number;  // 0-59
 }
 
+export interface TimePosition extends TimeBlock {
+  totalMinutes: number;
+}
+
+export interface DroppableData {
+  date: Date;
+  type: EventType;
+  timeBlock: TimeBlock;
+  position?: TimePosition;
+}
+
 export interface CalendarEvent {
   id: string;
   title: string;

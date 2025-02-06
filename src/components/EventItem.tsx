@@ -46,7 +46,7 @@ const EditButton = styled.button`
 const EventItemContainer = styled.div<EventItemContainerProps>`
   ${props => {
     if (props.$top !== undefined && props.$height !== undefined) {
-      // 日历格子中的事件样式
+      // scheduled 事件的样式
       return `
         position: absolute;
         top: ${props.$top}px;
@@ -57,18 +57,35 @@ const EventItemContainer = styled.div<EventItemContainerProps>`
         padding: 4px 8px;
         background-color: #e3f2fd;
         border: 1px solid #1976d2;
-        opacity: ${props.$isDragging ? 0.3 : 1};
+        transform: ${props.$isDragging ? 'none' : 'translate3d(0, 0, 0)'};
+        ${props.$isDragging ? `
+          opacity: 0.3;
+          border-style: dashed;
+        ` : `
+          opacity: 1;
+          border-style: solid;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        `}
       `;
     } else {
       // Pool、ThisWeek 和 General 事件共用样式
       return `
         position: relative;
-        width: calc(100% - 16px);
-        margin: 4px 8px;
-        min-height: ${HOUR_HEIGHT / 2}px;
+        width: 100%;
+        box-sizing: border-box;
+        margin: 4px 0;
         padding: 4px 8px;
+        min-height: ${HOUR_HEIGHT / 2}px;
         background-color: #e3f2fd;
         border: 1px solid #1976d2;
+        ${props.$isDragging ? `
+          opacity: 0.3;
+          border-style: dashed;
+        ` : `
+          opacity: 1;
+          border-style: solid;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        `}
       `;
     }
   }}
@@ -77,7 +94,7 @@ const EventItemContainer = styled.div<EventItemContainerProps>`
   cursor: pointer;
   user-select: none;
   z-index: ${props => props.$isDragging ? 9999 : 1};
-  pointer-events: auto;  // 确保容器可以接收事件
+  transition: all 0.2s ease;
 
   &:hover {
     background-color: #bbdefb;
@@ -122,6 +139,15 @@ const EventContent = styled.div`
   pointer-events: auto;  // 确保内容可以点击
 `;
 
+const DraggableWrapper = styled.div<{ $isDragging: boolean }>`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transform: ${props => props.$isDragging ? 'none' : 'translate3d(0, 0, 0)'};
+`;
+
 interface EventItemProps {
   event: CalendarEvent;
   isPool?: boolean;
@@ -130,15 +156,6 @@ interface EventItemProps {
   onResize?: (event: CalendarEvent, newStartTime?: string, newDuration?: number) => void;
   style?: React.CSSProperties;
 }
-
-// 添加这些辅助函数
-const calculateTop = (startTime?: string): number | undefined => {
-  if (!startTime) return undefined;
-  
-  const [hours, minutes] = startTime.split(':').map(Number);
-  const totalMinutes = hours * 60 + minutes;
-  return totalMinutes * (HOUR_HEIGHT / 60);  // 更精确的计算
-};
 
 const calculateHeight = (duration?: number): number | undefined => {
   if (!duration) return undefined;
@@ -158,18 +175,111 @@ const EventItem: React.FC<EventItemProps> = ({
     data: { event }
   });
 
+  // 添加位置计算的调试日志
+  console.log('EventItem position calculation:', {
+    eventId: event.id,
+    isDragging,
+    startTime: event.startTime,
+    dragMetadata: event._dragMetadata,
+    style,
+    willCalculate: {
+      hours: event.startTime ? Number(event.startTime.split(':')[0]) : undefined,
+      minutes: event.startTime ? Number(event.startTime.split(':')[1]) : undefined,
+      totalMinutes: event.startTime ? 
+        Number(event.startTime.split(':')[0]) * 60 + Number(event.startTime.split(':')[1]) : 
+        undefined
+    }
+  });
+
+  const calculatePosition = () => {
+    // 拖拽卡片不计算位置，从 0 开始
+    if (isDragging) {
+      return 0;
+    }
+
+    // 非拖拽状态：使用当前时间
+    if (event.startTime) {
+      const [hours, minutes] = event.startTime.split(':').map(Number);
+      const totalMinutes = hours * 60 + minutes;
+      return totalMinutes * (HOUR_HEIGHT / 60);
+    }
+    return undefined;
+  };
+
+  const top = calculatePosition();
+  const height = event.type === 'scheduled' ? calculateHeight(event.duration) : undefined;
+
+  // 测试拖拽卡片位置
+  React.useEffect(() => {
+    if (isDragging) {
+      console.log('=== Drag Card Position Test ===', {
+        eventId: event.id,
+        phase: 'Dragging',
+        startTime: event.startTime,
+        calculatedTop: top,
+        transform,
+        style,
+        elementPosition: {
+          top: typeof top === 'number' ? `${top}px` : undefined,
+          transform: transform ? 
+            `translate3d(${transform.x}px, ${transform.y}px, 0)` : 
+            undefined
+        },
+        // 获取实际DOM元素位置
+        domRect: setNodeRef.current?.getBoundingClientRect()
+      });
+    }
+  }, [isDragging, event.id, event.startTime, top, transform, style]);
+
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onEdit?.(event);
   };
 
+  console.log('EventItem rendering:', {
+    eventId: event.id,
+    isDragging,
+    startTime: event.startTime,
+    top,
+    transform
+  });
+
   return (
     <EventItemContainer
       $isPool={isPool}
       $isDragging={isDragging}
-      $top={!isDragging && event.type === 'scheduled' ? calculateTop(event.startTime) : undefined}
-      $height={event.type === 'scheduled' ? calculateHeight(event.duration) : undefined}
+      $top={top}
+      $height={height}
+      style={{
+        ...style,
+        position: isDragging ? 'absolute' : 'relative',
+        top: typeof top === 'number' ? `${top}px` : undefined
+      }}
     >
+      <DraggableWrapper
+        ref={setNodeRef}
+        {...attributes}
+        {...listeners}
+        $isDragging={isDragging}
+        style={{
+          position: isDragging ? 'absolute' : 'relative',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          transform: transform ? 
+            `translate3d(${transform.x}px, ${transform.y}px, 0)` : 
+            undefined
+        }}
+      >
+        <EventContent>
+          <div>{event.title}</div>
+          <div style={{ fontSize: '12px', color: '#666' }}>
+            {event.startTime && `${event.startTime}, `}
+            {event.duration && `${event.duration}min`}
+          </div>
+        </EventContent>
+      </DraggableWrapper>
       <EditButtonWrapper>
         <EditButton onClick={handleEditClick}>
           <svg viewBox="0 0 24 24" fill="currentColor">
@@ -177,32 +287,6 @@ const EventItem: React.FC<EventItemProps> = ({
           </svg>
         </EditButton>
       </EditButtonWrapper>
-      <div
-        ref={setNodeRef}
-        {...attributes}
-        {...listeners}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          ...style,
-          ...(isDragging ? {} : transform ? {
-            transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-          } : {})
-        }}
-      >
-        <DraggableArea>
-          <EventContent>
-            <div>{event.title}</div>
-            <div style={{ fontSize: '12px', color: '#666' }}>
-              {event.startTime && `${event.startTime}, `}
-              {event.duration && `${event.duration}min`}
-            </div>
-          </EventContent>
-        </DraggableArea>
-      </div>
     </EventItemContainer>
   );
 };

@@ -3,41 +3,11 @@ import styled from 'styled-components';
 import { useDroppable } from '@dnd-kit/core';
 import { CalendarEvent } from '../../types';
 import EventItem from '../EventItem';
-import { HOUR_HEIGHT } from '../../constants';
 
-interface EventListContainerProps {
-  $isOver?: boolean;
-}
-
-const EventListContainer = styled.div.attrs({
-  className: 'event-list-container'
-})<EventListContainerProps>`
+const EventListContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  position: relative;
-  padding: 4px;
-  background-color: ${props => props.$isOver ? 'rgba(0, 0, 0, 0.05)' : 'transparent'};
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: #f8f8f8;
-  }
-`;
-
-const EventRow = styled.div.attrs({
-  className: 'event-row'
-})`
-  display: flex;
-  width: 100%;
-  position: relative;
-  min-height: ${HOUR_HEIGHT / 2}px;
-  border-radius: 4px;
-
-  & + & {
-    margin-top: 4px;
-  }
+  gap: 4px;  // 统一事件间距
 `;
 
 interface EventListProps {
@@ -51,8 +21,6 @@ const EventList: React.FC<EventListProps> = ({
   onEditEvent,
   areaType,
 }) => {
-  console.log(`EventList (${areaType}): rendering with onEditEvent:`, !!onEditEvent);
-
   const { setNodeRef, isOver } = useDroppable({
     id: `${areaType}-area`,
     data: { type: areaType }
@@ -62,18 +30,17 @@ const EventList: React.FC<EventListProps> = ({
     <EventListContainer 
       ref={setNodeRef} 
       data-testid={`${areaType}-event-list`}
-      $isOver={isOver}
+      style={{
+        backgroundColor: isOver ? 'rgba(0, 0, 0, 0.05)' : undefined
+      }}
     >
-      {events.map(event => {
-        return (
-          <EventRow key={event.id} data-testid={`event-row-${event.id}`}>
-            <EventItem
-              event={event}
-              onEdit={onEditEvent}
-            />
-          </EventRow>
-        );
-      })}
+      {events.map(event => (
+        <EventItem
+          key={event.id}
+          event={event}
+          onEdit={onEditEvent}
+        />
+      ))}
     </EventListContainer>
   );
 };

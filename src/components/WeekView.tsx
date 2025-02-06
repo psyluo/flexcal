@@ -1,16 +1,15 @@
 import React from 'react';
 import styled from 'styled-components';
 import { format, isSameDay, parseISO } from 'date-fns';
-import { CalendarEvent, TimeBlock } from '../types';
+import { CalendarEvent, TimeBlock, TimePosition } from '../types';
 import EventItem from './EventItem';
-import { HOUR_HEIGHT, HEADER_HEIGHT } from '../constants';
+import { HOUR_HEIGHT, HEADER_HEIGHT, MINUTES_SNAP } from '../constants';
 import { useDroppable } from '@dnd-kit/core';
 
 const WeekViewContainer = styled.div`
   flex: 1;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
+  position: relative;
 `;
 
 const HeaderRow = styled.div`
@@ -42,61 +41,38 @@ const HeaderCell = styled.div`
 const TimeGridContainer = styled.div`
   display: grid;
   grid-template-columns: 60px repeat(7, 1fr);
-  flex: 1;
+  min-height: ${24 * HOUR_HEIGHT}px;
   position: relative;
-  overflow-y: auto;
 `;
 
 const TimeColumn = styled.div`
   border-right: 1px solid #e0e0e0;
 `;
 
-const DayColumn = styled.div<{ $isOver?: boolean }>`
-  border-right: 1px solid #e0e0e0;
-  min-height: ${HOUR_HEIGHT * 24}px;
-  position: relative;
-  box-sizing: border-box;
-  background-color: ${props => props.$isOver ? '#f5f5f5' : 'transparent'};
-  transition: background-color 0.2s;
-`;
-
 const TimeSlot = styled.div`
   height: ${HOUR_HEIGHT / 2}px;
-  box-sizing: border-box;
-  border-bottom: 1px dashed #f0f0f0;
-  padding: 2px 8px;
-  font-size: 12px;
-  color: #666;
-  position: relative;
+  padding: 0 8px;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  color: #666;
+  font-size: 12px;
 `;
 
-const TimeMarker = styled.div<{ $top: number; color?: string }>`
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: ${props => props.$top * HOUR_HEIGHT}px; // 使用小时数乘以HOUR_HEIGHT
-  height: 2px;
-  background-color: ${props => props.color || 'red'};
-  opacity: 0.5;
-  z-index: 2;
+const DayColumn = styled.div`
+  position: relative;
+  border-right: 1px solid #e0e0e0;
+  min-height: ${24 * HOUR_HEIGHT}px;
 `;
 
 const TimeBlockCell = styled.div<{ $isOver?: boolean }>`
   height: ${HOUR_HEIGHT / 2}px;
-  box-sizing: border-box;
-  border-bottom: 1px dashed #f0f0f0;
-  position: relative;
-  background-color: ${props => props.$isOver ? '#f5f5f5' : 'transparent'};
-  transition: background-color 0.2s;
-  padding: 0;
-  margin: 0;
-  z-index: 1;
+  background-color: ${props => props.$isOver ? 'rgba(0, 0, 0, 0.05)' : 'transparent'};
+  border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
 
   &:hover {
-    background-color: #f8f8f8;
+    background-color: rgba(0, 0, 0, 0.02);
   }
 `;
 
@@ -115,29 +91,51 @@ const WeekView: React.FC<WeekViewProps> = ({
   onCreateEvent,
   onResizeEvent,
 }) => {
-  // 生成48个半小时块
-  const timeBlocks: TimeBlock[] = Array.from({ length: 48 }, (_, index) => ({
-    hour: Math.floor(index / 2),
-    minute: (index % 2) * 30
-  }));
+  // 添加防重复标记
+  const isCreating = React.useRef(false);
 
-  // 格式化时间显示
+  // 生成48个半小时块
+  const timeBlocks: TimePosition[] = Array.from({ length: 48 }, (_, index) => {
+    // 每个时间块代表30分钟
+    const totalMinutes = index * 30;
+    // 计算小时和分钟
+    const hour = Math.floor(totalMinutes / 60);
+    const minute = totalMinutes % 60;
+    // 确保分钟对齐到 MINUTES_SNAP
+    const snappedMinute = Math.floor(minute / MINUTES_SNAP) * MINUTES_SNAP;
+    
+    return {
+      hour,
+      minute: snappedMinute,
+      totalMinutes: hour * 60 + snappedMinute  // 使用对齐后的分钟重新计算总分钟数
+    };
+  });
+
   const formatTimeLabel = (block: TimeBlock): string => {
     const hour = block.hour.toString().padStart(2, '0');
     const minute = block.minute.toString().padStart(2, '0');
     return `${hour}:${minute}`;
   };
 
-  const handleTimeBlockClick = (date: Date, block: TimeBlock) => {
-    onCreateEvent(date, block);
+  const handleTimeBlockClick = (date: Date, timeBlock: TimeBlock) => {
+    // 防止重复创建
+    if (isCreating.current) return;
+    isCreating.current = true;
+
+    onCreateEvent?.(date, timeBlock);
+
+    // 重置标记
+    setTimeout(() => {
+      isCreating.current = false;
+    }, 100);
   };
 
   return (
     <WeekViewContainer>
       <TimeGridContainer>
         <TimeColumn>
-          {timeBlocks.map((block, index) => (
-            <TimeSlot key={index}>
+          {timeBlocks.map((block) => (
+            <TimeSlot key={block.totalMinutes}>
               {formatTimeLabel(block)}
             </TimeSlot>
           ))}
@@ -145,38 +143,36 @@ const WeekView: React.FC<WeekViewProps> = ({
         
         {dates.map(date => (
           <DayColumn key={date.toISOString()}>
-            {timeBlocks.map((block, index) => {
+            {timeBlocks.map((block) => {
               const { setNodeRef, isOver } = useDroppable({
-                id: `${date.toISOString()}-${block.hour}-${block.minute}`,
+                id: `${format(date, 'yyyy-MM-dd')}-${block.hour}-${block.minute}`,
                 data: {
-                  date,
                   type: 'scheduled',
-                  timeBlock: block,
-                  blockIndex: index
+                  date,
+                  position: block
                 }
               });
 
+              // 计算实际的像素位置
+              const top = block.totalMinutes * (HOUR_HEIGHT / 60);
+
               return (
                 <TimeBlockCell
-                  key={index}
+                  key={block.totalMinutes}
                   ref={setNodeRef}
                   $isOver={isOver}
-                  data-hour={block.hour}
-                  data-minute={block.minute}
-                  data-index={index}
                   onClick={() => handleTimeBlockClick(date, block)}
                   style={{
                     position: 'absolute',
-                    top: `${index * (HOUR_HEIGHT / 2)}px`,
+                    top: `${top}px`,
                     left: 0,
-                    right: 0,
-                    pointerEvents: 'all'
+                    right: 0
                   }}
                 />
               );
             })}
             {events
-              .filter(event => isSameDay(new Date(event.date), date))
+              .filter(event => event.date && isSameDay(new Date(event.date), date))
               .map(event => (
                 <EventItem 
                   key={event.id} 
