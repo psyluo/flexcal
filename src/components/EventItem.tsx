@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useDraggable } from '@dnd-kit/core';
 import { CalendarEvent } from '../types';
-import { HOUR_HEIGHT, POOL_HEIGHT, HEADER_HEIGHT } from '../constants';
+import { HOUR_HEIGHT } from '../constants';
 import { THEME } from './shared/AreaStyles';
 
 interface EventItemContainerProps {
@@ -103,13 +103,6 @@ const ResizeHandle = styled.div<{ $position: 'top' | 'bottom' }>`
   }
 `;
 
-const DraggableArea = styled.div`
-  position: relative;
-  height: 100%;
-  width: 100%;
-  pointer-events: auto;  // 改为 auto
-`;
-
 const EventContent = styled.div`
   display: flex;
   flex-direction: column;
@@ -173,7 +166,6 @@ const EventItem: React.FC<EventItemProps> = ({
   });
 
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeType, setResizeType] = useState<'top' | 'bottom' | null>(null);
   const initialY = useRef<number>(0);
   const initialTime = useRef<string | undefined>(event.startTime);
   const initialDuration = useRef<number | undefined>(event.duration);
@@ -204,7 +196,6 @@ const EventItem: React.FC<EventItemProps> = ({
     e.stopPropagation();
     
     setIsResizing(true);
-    setResizeType(type);
     initialY.current = e.clientY;
     initialTime.current = event.startTime;
     initialDuration.current = event.duration;
@@ -244,7 +235,6 @@ const EventItem: React.FC<EventItemProps> = ({
       e.stopPropagation();
       
       setIsResizing(false);
-      setResizeType(null);
       
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);

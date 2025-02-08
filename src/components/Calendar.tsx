@@ -8,11 +8,11 @@ import {
   DragStartEvent,
   Modifier,
 } from '@dnd-kit/core';
-import { CalendarEvent, TimeBlock } from '../types';
+import { CalendarEvent, TimeBlock, EventType } from '../types';
 import WeekView from './WeekView';
 import PoolRow from './PoolRow';
 import EventItem from './EventItem';
-import { POOL_HEIGHT, HOUR_HEIGHT } from '../constants';
+import { HOUR_HEIGHT } from '../constants';
 import EventDialog from './EventDialog';
 import WeekSwitcher from './WeekSwitcher';
 import ThisWeekArea from './ThisWeekArea';
@@ -223,11 +223,10 @@ const Calendar: React.FC = () => {
   };
 
   const snapToGrid: Modifier = ({ transform }) => {
-    if (!transform || activeEvent?.type !== 'scheduled') return transform;
-
+    if (!transform) return transform;
     return {
       ...transform,
-      x: transform.x,  // 保持 x 轴不变
+      x: transform.x,
       y: Math.round(transform.y / (HOUR_HEIGHT / 2)) * (HOUR_HEIGHT / 2),
       scaleX: 1,
       scaleY: 1
