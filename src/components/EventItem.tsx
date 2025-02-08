@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { useDraggable } from '@dnd-kit/core';
 import { CalendarEvent } from '../types';
