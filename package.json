@@ -22,6 +22,7 @@
     "@vitejs/plugin-react": "^4.2.0",
     "babel-plugin-styled-components": "^2.1.4",
     "typescript": "^5.0.2",
+    "vercel": "^41.0.2",
     "vite": "^5.0.0"
   },
   "scripts": {
