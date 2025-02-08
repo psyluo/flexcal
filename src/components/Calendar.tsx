@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { startOfWeek, addDays, format, addWeeks, subWeeks } from 'date-fns';
 import { 
@@ -6,15 +6,13 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
-  Active,
-  Over,
   Modifier,
 } from '@dnd-kit/core';
-import { CalendarEvent, TimeBlock, TimePosition } from '../types';
+import { CalendarEvent, TimeBlock } from '../types';
 import WeekView from './WeekView';
 import PoolRow from './PoolRow';
 import EventItem from './EventItem';
-import { POOL_HEIGHT, HOUR_HEIGHT, MINUTES_SNAP } from '../constants';
+import { POOL_HEIGHT, HOUR_HEIGHT } from '../constants';
 import EventDialog from './EventDialog';
 import WeekSwitcher from './WeekSwitcher';
 import ThisWeekArea from './ThisWeekArea';
@@ -140,16 +138,6 @@ const HeaderCell = styled.div`
   }
 `;
 
-const TimeCell = styled.div`
-  width: ${TIME_COLUMN_WIDTH}px;
-  padding: 8px;
-  text-align: right;
-  border-right: 1px solid #e0e0e0;
-  box-sizing: border-box;
-  white-space: nowrap;
-  overflow: hidden;
-`;
-
 const ScrollableContent = styled.div`
   flex: 1;
   overflow-y: auto;  // 允许内容区域滚动
@@ -170,21 +158,6 @@ const MainContent = styled.div`
   padding: 0 16px 16px 0;  // 移除左边距
   gap: 0;
   overflow: hidden;
-`;
-
-const TimeGridContainer = styled.div`
-  display: grid;
-  grid-template-columns: ${TIME_COLUMN_WIDTH}px repeat(7, 1fr);
-  min-height: ${24 * HOUR_HEIGHT}px;
-  position: relative;
-`;
-
-const PoolContainer = styled.div`
-  display: grid;
-  grid-template-columns: ${TIME_COLUMN_WIDTH}px repeat(7, 1fr);
-  min-height: ${POOL_HEIGHT}px;
-  height: auto;
-  border-bottom: 1px solid #e0e0e0;
 `;
 
 const Calendar: React.FC = () => {
@@ -254,18 +227,11 @@ const Calendar: React.FC = () => {
 
     return {
       ...transform,
-      y: Math.round(transform.y / (HOUR_HEIGHT / 2)) * (HOUR_HEIGHT / 2)  // 对齐到30分钟格子
+      x: transform.x,  // 保持 x 轴不变
+      y: Math.round(transform.y / (HOUR_HEIGHT / 2)) * (HOUR_HEIGHT / 2),
+      scaleX: 1,
+      scaleY: 1
     };
-  };
-
-  const getTimeFromYPosition = (y: number): string => {
-    // 每小时60px，直接用像素值计算分钟
-    const totalMinutes = Math.floor(y);
-    const snappedMinutes = snapToGrid(totalMinutes);
-    const hours = Math.floor(snappedMinutes / 60);
-    const minutes = snappedMinutes % 60;
-    
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
