@@ -165,29 +165,103 @@ const Calendar: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(today);
   
   const [events, setEvents] = useState<CalendarEvent[]>([
+    // Scheduled 事件 - 分布在本周工作日
     {
       id: '1',
-      title: 'Meeting with Team',
-      duration: 60,
+      title: 'Team Stand-up',
+      duration: 30,
       date: format(today, 'yyyy-MM-dd'),
-      startTime: '10:00',
+      startTime: '09:30',
       type: 'scheduled'
     },
     {
       id: '2',
-      title: 'Review Documents',
-      duration: 30,
+      title: 'Product Review',
+      duration: 60,
       date: format(today, 'yyyy-MM-dd'),
-      type: 'pool'
+      startTime: '14:00',
+      type: 'scheduled'
     },
     {
       id: '3',
-      title: 'Call Client',
-      duration: 30,
-      type: 'thisWeek'
+      title: 'Client Meeting',
+      duration: 45,
+      date: format(addDays(today, 1), 'yyyy-MM-dd'),
+      startTime: '11:00',
+      type: 'scheduled'
     },
     {
       id: '4',
+      title: 'Design Workshop',
+      duration: 90,
+      date: format(addDays(today, 1), 'yyyy-MM-dd'),
+      startTime: '15:00',
+      type: 'scheduled'
+    },
+    {
+      id: '5',
+      title: 'Code Review',
+      duration: 60,
+      date: format(addDays(today, 2), 'yyyy-MM-dd'),
+      startTime: '10:00',
+      type: 'scheduled'
+    },
+    {
+      id: '6',
+      title: 'Sprint Planning',
+      duration: 120,
+      date: format(addDays(today, 2), 'yyyy-MM-dd'),
+      startTime: '14:00',
+      type: 'scheduled'
+    },
+    {
+      id: '7',
+      title: 'Team Training',
+      duration: 90,
+      date: format(addDays(today, 3), 'yyyy-MM-dd'),
+      startTime: '13:00',
+      type: 'scheduled'
+    },
+
+    // Pool 事件 - 分布在本周
+    {
+      id: '8',
+      title: 'Review PRs',
+      duration: 30,
+      date: format(addDays(today, 1), 'yyyy-MM-dd'),
+      type: 'pool'
+    },
+    {
+      id: '9',
+      title: 'Update Documentation',
+      duration: 60,
+      date: format(addDays(today, 2), 'yyyy-MM-dd'),
+      type: 'pool'
+    },
+
+    // ThisWeek 事件
+    {
+      id: '10',
+      title: 'Prepare Presentation',
+      duration: 120,
+      type: 'thisWeek'
+    },
+    {
+      id: '11',
+      title: 'Research New Tools',
+      duration: 60,
+      type: 'thisWeek'
+    },
+
+    // General 事件
+    {
+      id: '12',
+      title: 'Learn TypeScript',
+      duration: 180,
+      type: 'general'
+    },
+    {
+      id: '13',
       title: 'Update Portfolio',
       duration: 120,
       type: 'general'
