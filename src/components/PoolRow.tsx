@@ -4,12 +4,14 @@ import { format, isSameDay } from 'date-fns';
 import { CalendarEvent } from '../types';
 import EventItem from './EventItem';
 import { useDroppable } from '@dnd-kit/core';
+import { POOL_HEIGHT } from '../constants';
 
 const PoolContainer = styled.div`
   display: grid;
   grid-template-columns: 60px repeat(7, 1fr);
-  border-bottom: 2px solid #e0e0e0;
-  min-height: 100px;
+  min-height: ${POOL_HEIGHT}px;
+  height: auto;
+  border-bottom: 1px solid #e0e0e0;
 `;
 
 const PoolLabel = styled.div`
@@ -31,13 +33,14 @@ const PoolTitle = styled.div`
   font-size: 16px;
 `;
 
-const POOL_HEIGHT = 100;
-
 const PoolCell = styled.div<{ $isOver?: boolean }>`
-  height: ${POOL_HEIGHT}px;
   border-right: 1px solid #e0e0e0;
-  position: relative;
-  box-sizing: border-box;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: ${POOL_HEIGHT}px;
+  height: auto;
   background-color: ${props => props.$isOver ? 'rgba(0, 0, 0, 0.05)' : 'transparent'};
   transition: background-color 0.2s;
 
