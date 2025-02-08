@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useDraggable } from '@dnd-kit/core';
 import { CalendarEvent } from '../types';
@@ -104,11 +104,12 @@ const ResizeHandle = styled.div<{ $position: 'top' | 'bottom' }>`
   position: absolute;
   left: 0;
   right: 0;
-  height: 6px;
+  height: 8px;
   cursor: ns-resize;
   background: transparent;
-  ${props => props.$position === 'top' ? 'top: -3px' : 'bottom: -3px'};
-  z-index: 5;  // 增加 z-index 确保在拖拽区域之上
+  ${props => props.$position === 'top' ? 'top: -4px' : 'bottom: -4px'};
+  z-index: 1000;
+  pointer-events: all;
 
   &:hover {
     background: rgba(0, 0, 0, 0.1);
@@ -133,12 +134,13 @@ const EventContent = styled.div`
   pointer-events: auto;  // 确保内容可以点击
 `;
 
-const DraggableWrapper = styled.div<{ $isDragging: boolean }>`
+const DraggableWrapper = styled.div<{ $isDragging: boolean; $isResizing: boolean }>`
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
+  pointer-events: ${props => props.$isResizing ? 'none' : 'auto'};  // 修正属性名
   transform: ${props => props.$isDragging ? 'none' : 'translate3d(0, 0, 0)'};
 `;
 
@@ -171,29 +173,23 @@ const EventItem: React.FC<EventItemProps> = ({
     data: { event }
   });
 
-  // 添加位置计算的调试日志
-  console.log('EventItem position calculation:', {
-    eventId: event.id,
-    isDragging,
-    startTime: event.startTime,
-    dragMetadata: event._dragMetadata,
-    style,
-    willCalculate: {
-      hours: event.startTime ? Number(event.startTime.split(':')[0]) : undefined,
-      minutes: event.startTime ? Number(event.startTime.split(':')[1]) : undefined,
-      totalMinutes: event.startTime ? 
-        Number(event.startTime.split(':')[0]) * 60 + Number(event.startTime.split(':')[1]) : 
-        undefined
-    }
-  });
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeType, setResizeType] = useState<'top' | 'bottom' | null>(null);
+  const initialY = useRef<number>(0);
+  const initialTime = useRef<string | undefined>(event.startTime);
+  const initialDuration = useRef<number | undefined>(event.duration);
 
   const calculatePosition = () => {
-    // 拖拽卡片不计算位置，从 0 开始
+    // 只有 scheduled 类型的事件才需要计算位置
+    if (event.type !== 'scheduled') {
+      return undefined;
+    }
+
+    // 拖拽时不计算位置
     if (isDragging) {
       return 0;
     }
 
-    // 非拖拽状态：使用当前时间
     if (event.startTime) {
       const [hours, minutes] = event.startTime.split(':').map(Number);
       const totalMinutes = hours * 60 + minutes;
@@ -205,40 +201,90 @@ const EventItem: React.FC<EventItemProps> = ({
   const top = calculatePosition();
   const height = event.type === 'scheduled' ? calculateHeight(event.duration) : undefined;
 
-  // 测试拖拽卡片位置
-  React.useEffect(() => {
-    if (isDragging) {
-      console.log('=== Drag Card Position Test ===', {
-        eventId: event.id,
-        phase: 'Dragging',
-        startTime: event.startTime,
-        calculatedTop: top,
-        transform,
-        style,
-        elementPosition: {
-          top: typeof top === 'number' ? `${top}px` : undefined,
-          transform: transform ? 
-            `translate3d(${transform.x}px, ${transform.y}px, 0)` : 
-            undefined
-        },
-        // 获取实际DOM元素位置
-        domRect: setNodeRef.current?.getBoundingClientRect()
-      });
-    }
-  }, [isDragging, event.id, event.startTime, top, transform, style]);
-
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onEdit?.(event);
   };
 
-  console.log('EventItem rendering:', {
-    eventId: event.id,
-    isDragging,
-    startTime: event.startTime,
-    top,
-    transform
-  });
+  const handleResizeStart = (e: React.MouseEvent, type: 'top' | 'bottom') => {
+    console.log('=== Resize Start ===', {
+      type,
+      eventId: event.id,
+      initialY: e.clientY,
+      startTime: event.startTime,
+      duration: event.duration
+    });
+
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // 立即设置状态
+    setIsResizing(true);
+    setResizeType(type);
+    initialY.current = e.clientY;
+    initialTime.current = event.startTime;
+    initialDuration.current = event.duration;
+
+    function onMouseMove(e: MouseEvent) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const deltaY = e.clientY - initialY.current;
+      const minutesChange = Math.round((deltaY / (HOUR_HEIGHT / 2))) * 30;
+
+      console.log('=== Mouse Move ===', {
+        deltaY,
+        minutesChange,
+        currentY: e.clientY,
+        initialY: initialY.current,
+        type
+      });
+
+      if (type === 'top' && initialTime.current) {
+        const [hours, minutes] = initialTime.current.split(':').map(Number);
+        const totalMinutes = hours * 60 + minutes + minutesChange;
+        const snappedTotalMinutes = Math.round(totalMinutes / 30) * 30;
+        const newHours = Math.floor(snappedTotalMinutes / 60);
+        const newMinutes = snappedTotalMinutes % 60;
+        
+        if (newHours >= 0 && newHours < 24) {
+          const newStartTime = `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`;
+          const newDuration = (initialDuration.current || 0) - minutesChange;
+          
+          console.log('=== Top Resize ===', {
+            newStartTime,
+            newDuration,
+            minutesChange
+          });
+
+          if (newDuration >= 30) {
+            onResize?.(event, newStartTime, newDuration);
+          }
+        }
+      } else if (type === 'bottom') {
+        const newDuration = Math.round(((initialDuration.current || 0) + minutesChange) / 30) * 30;
+        if (newDuration >= 30) {
+          onResize?.(event, event.startTime, newDuration);
+        }
+      }
+    }
+
+    function onMouseUp(e: MouseEvent) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      console.log('=== Resize End ===');
+      setIsResizing(false);
+      setResizeType(null);
+      
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    }
+
+    // 使用 window 而不是 document
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
 
   return (
     <EventItemContainer
@@ -257,6 +303,7 @@ const EventItem: React.FC<EventItemProps> = ({
         {...attributes}
         {...listeners}
         $isDragging={isDragging}
+        $isResizing={isResizing}
         style={{
           position: isDragging ? 'absolute' : 'relative',
           top: 0,
@@ -276,6 +323,21 @@ const EventItem: React.FC<EventItemProps> = ({
           </div>
         </EventContent>
       </DraggableWrapper>
+
+      {/* 只在 scheduled 事件上显示调整手柄 */}
+      {event.type === 'scheduled' && !isDragging && (
+        <>
+          <ResizeHandle 
+            $position="top" 
+            onMouseDown={(e) => handleResizeStart(e, 'top')}
+          />
+          <ResizeHandle 
+            $position="bottom" 
+            onMouseDown={(e) => handleResizeStart(e, 'bottom')}
+          />
+        </>
+      )}
+
       <EditButtonWrapper>
         <EditButton onClick={handleEditClick}>
           <svg viewBox="0 0 24 24" fill="currentColor">

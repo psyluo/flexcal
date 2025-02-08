@@ -7,7 +7,19 @@ import EventItem from '../EventItem';
 const EventListContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;  // 统一事件间距
+  gap: 4px;
+  padding: 4px 8px;  // 移到这里统一控制内边距
+  min-height: 100%;  // 占满父容器高度
+  box-sizing: border-box;
+  
+  // 移除这些可能导致问题的样式
+  // & > *:first-child {
+  //   margin-top: 0;
+  // }
+  
+  // & > *:last-child {
+  //   margin-bottom: 0;
+  // }
 `;
 
 interface EventListProps {

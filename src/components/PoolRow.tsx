@@ -19,6 +19,18 @@ const PoolLabel = styled.div`
   align-items: center;
 `;
 
+const TimeCell = styled.div`
+  padding: 8px;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+`;
+
+const PoolTitle = styled.div`
+  font-weight: 500;
+  font-size: 16px;
+`;
+
 const POOL_HEIGHT = 100;
 
 const PoolCell = styled.div<{ $isOver?: boolean }>`
@@ -44,7 +56,9 @@ interface PoolRowProps {
 const PoolRow: React.FC<PoolRowProps> = ({ events, dates, onEditEvent, onCreateEvent }) => {
   return (
     <PoolContainer>
-      <PoolLabel>Pool</PoolLabel>
+      <TimeCell>
+        <PoolTitle>Day</PoolTitle>
+      </TimeCell>
       {dates.map(date => {
         const { setNodeRef, isOver } = useDroppable({
           id: `pool-${date.toISOString()}`,

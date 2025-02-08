@@ -41,7 +41,7 @@ interface EventDialogProps {
   event: CalendarEvent;
   onClose: () => void;
   onSave: (event: CalendarEvent) => void;
-  onDelete?: (event: CalendarEvent) => void;
+  onDelete: (eventId: string) => void;
 }
 
 const EventDialog: React.FC<EventDialogProps> = ({
@@ -96,6 +96,11 @@ const EventDialog: React.FC<EventDialogProps> = ({
       e.preventDefault();
       handleSave();
     }
+  };
+
+  const handleDelete = () => {
+    onDelete(event.id);
+    onClose();
   };
 
   return (
@@ -192,12 +197,12 @@ const EventDialog: React.FC<EventDialogProps> = ({
           />
         </DialogContent>
         <DialogActions>
-          {onDelete && !event.id.startsWith('new-') && (
-            <Button onClick={() => onDelete(event)} color="error">
+          <Button onClick={onClose}>Cancel</Button>
+          {!event.id.startsWith('new-') && (
+            <Button onClick={handleDelete} color="error">
               Delete
             </Button>
           )}
-          <Button onClick={onClose}>Cancel</Button>
           <Button onClick={handleSave} variant="contained" disabled={!title}>
             Save
           </Button>

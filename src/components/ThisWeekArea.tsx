@@ -25,8 +25,6 @@ const ThisWeekArea: React.FC<ThisWeekAreaProps> = ({
   onCreateEvent,
   onClick,
 }) => {
-  console.log('ThisWeekArea: rendering with onEditEvent:', !!onEditEvent);
-
   const { setNodeRef, isOver } = useDroppable({
     id: 'thisWeek-area',
     data: { type: 'thisWeek' }
@@ -35,7 +33,7 @@ const ThisWeekArea: React.FC<ThisWeekAreaProps> = ({
   return (
     <AreaContainer onClick={onClick}>
       <AreaHeader>
-        <AreaTitle>This Week</AreaTitle>
+        <AreaTitle>Week</AreaTitle>
         <AddButton onClick={(e) => {
           e.stopPropagation();
           onCreateEvent();

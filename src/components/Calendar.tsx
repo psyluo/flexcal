@@ -19,6 +19,7 @@ import EventDialog from './EventDialog';
 import WeekSwitcher from './WeekSwitcher';
 import ThisWeekArea from './ThisWeekArea';
 import GeneralArea from './GeneralArea';
+import { Transform } from '@dnd-kit/utilities';
 
 export const HEADER_HEIGHT = 50; // 日期行高度
 
@@ -163,12 +164,6 @@ const Calendar: React.FC = () => {
         }
       };
 
-      console.log('=== Drag Start Test ===', {
-        originalEvent: draggedEvent,
-        dragEvent,
-        calculatedPosition: totalMinutes * (HOUR_HEIGHT / 60)
-      });
-
       setActiveEvent(dragEvent);
     } else {
       setActiveEvent(draggedEvent);
@@ -176,7 +171,7 @@ const Calendar: React.FC = () => {
   };
 
   const snapToGrid: Modifier = ({ transform }) => {
-    if (!transform || !activeEvent?.type === 'scheduled') return transform;
+    if (!transform || activeEvent?.type !== 'scheduled') return transform;
 
     return {
       ...transform,
@@ -197,13 +192,6 @@ const Calendar: React.FC = () => {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     
-    console.log('=== Drag End Test ===', {
-      activeEvent: active.data.current?.event,
-      overData: over?.data.current,
-      activeRect: active.rect,
-      overRect: over?.rect
-    });
-
     if (!over) {
       setActiveEvent(null);
       return;
@@ -239,25 +227,31 @@ const Calendar: React.FC = () => {
           const minute = Math.floor(totalMinutes % 60 / MINUTES_SNAP) * MINUTES_SNAP;
           newEvent.startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
         }
+      } else if (targetType === 'thisWeek' || targetType === 'general') {
+        // 清除位置相关的属性
+        newEvent.startTime = undefined;
+        newEvent.date = undefined;
+        delete newEvent._dragMetadata;
+        // 确保清除任何可能的 transform
+        if ('transform' in newEvent) {
+          delete (newEvent as any).transform;
+        }
       }
 
       // 更新事件
-      setEvents(prevEvents => 
-        prevEvents.map(evt => 
+      setEvents(prevEvents => {
+        const newEvents = prevEvents.map(evt => 
           evt.id === draggedEvent.id ? newEvent : evt
-        )
-      );
+        );
+        
+        return newEvents;
+      });
     }
     
     setActiveEvent(null);
   };
 
   const handleEditEvent = (event: CalendarEvent) => {
-    console.log('handleEditEvent called with:', {
-      event,
-      currentEditingEvent: editingEvent,  // 添加当前编辑状态
-      willSetEditingEvent: event
-    });
     setEditingEvent(event);
   };
 
@@ -285,7 +279,6 @@ const Calendar: React.FC = () => {
     if (isSaving.current) return;
     isSaving.current = true;
 
-    console.log('Saving event:', event);
     if (event.id.startsWith('new-')) {
       const newId = `event-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       setEvents(prev => [...prev, { ...event, id: newId }]);
@@ -304,21 +297,16 @@ const Calendar: React.FC = () => {
     setEditingEvent(null);
   };
 
-  const handleEventResize = (event: CalendarEvent, newStartTime?: string, newDuration?: number) => {
-    setEvents(prevEvents =>
-      prevEvents.map(evt => {
-        if (evt.id !== event.id) return evt;
-        
-        const updatedEvent = { ...evt };
-        if (newStartTime !== undefined) {
-          updatedEvent.startTime = newStartTime;
-        }
-        if (newDuration !== undefined) {
-          updatedEvent.duration = newDuration;
-        }
-        return updatedEvent;
-      })
-    );
+  const handleEventResize = (
+    event: CalendarEvent,
+    newStartTime?: string,
+    newDuration?: number
+  ) => {
+    setEvents(prev => prev.map(evt => 
+      evt.id === event.id 
+        ? { ...evt, startTime: newStartTime, duration: newDuration }
+        : evt
+    ));
   };
 
   const handlePrevWeek = () => {
@@ -330,7 +318,7 @@ const Calendar: React.FC = () => {
   };
 
   // 修改 transform 修改器
-  const adjustTransform = ({ transform }: any) => {
+  const adjustTransform = ({ transform }: { transform: Transform | null }) => {
     if (!transform) return transform;
 
     // 如果是 scheduled 类型的事件移动到 pool 区域

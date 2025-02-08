@@ -80,7 +80,7 @@ interface WeekViewProps {
   events: CalendarEvent[];
   dates: Date[];
   onEditEvent: (event: CalendarEvent) => void;
-  onCreateEvent: (date: Date, timeBlock?: TimeBlock) => void;
+  onCreateEvent: (date: Date, timeBlock: TimeBlock) => void;
   onResizeEvent: (event: CalendarEvent, newStartTime?: string, newDuration?: number) => void;
 }
 
@@ -173,14 +173,20 @@ const WeekView: React.FC<WeekViewProps> = ({
             })}
             {events
               .filter(event => event.date && isSameDay(new Date(event.date), date))
-              .map(event => (
-                <EventItem 
-                  key={event.id} 
-                  event={event}
-                  onEdit={onEditEvent}
-                  onResize={onResizeEvent}
-                />
-              ))}
+              .map(event => {
+                console.log('Rendering event:', {
+                  id: event.id,
+                  hasOnResize: !!onResizeEvent
+                });
+                return (
+                  <EventItem 
+                    key={event.id} 
+                    event={event}
+                    onEdit={onEditEvent}
+                    onResize={onResizeEvent}
+                  />
+                );
+              })}
           </DayColumn>
         ))}
       </TimeGridContainer>

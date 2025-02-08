@@ -30,8 +30,24 @@ export const AreaContent = styled.div`
   transition: background-color 0.2s;
   display: flex;
   flex-direction: column;
+  padding: 0;
+`;
+
+export const EventListContainer = styled.div`
+  display: flex;
+  flex-direction: column;
   gap: 4px;
   padding: 4px 8px;
+  box-sizing: border-box;
+  
+  // 确保事件列表从顶部开始
+  align-items: flex-start;
+  justify-content: flex-start;
+  
+  // 当没有子元素时不占用空间
+  &:empty {
+    padding: 0;
+  }
 `;
 
 export const AreaTitle = styled.div`
