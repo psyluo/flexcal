@@ -12,13 +12,6 @@ interface ThisWeekAreaProps {
   onClick: () => void;
 }
 
-const ThisWeekContainer = styled.div`
-  padding: 0 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-`;
-
 const ThisWeekArea: React.FC<ThisWeekAreaProps> = ({
   events,
   onEditEvent,
@@ -31,9 +24,9 @@ const ThisWeekArea: React.FC<ThisWeekAreaProps> = ({
   });
 
   return (
-    <AreaContainer onClick={onClick}>
+    <AreaContainer className="this-week-area" onClick={onClick}>
       <AreaHeader>
-        <AreaTitle>Week</AreaTitle>
+        <AreaTitle>This Week</AreaTitle>
         <AddButton onClick={(e) => {
           e.stopPropagation();
           onCreateEvent();

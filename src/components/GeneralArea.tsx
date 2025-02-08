@@ -23,7 +23,7 @@ const GeneralArea: React.FC<GeneralAreaProps> = ({
   });
 
   return (
-    <AreaContainer onClick={onClick}>
+    <AreaContainer className="general-area" onClick={onClick}>
       <AreaHeader>
         <AreaTitle>General</AreaTitle>
         <AddButton onClick={(e) => {

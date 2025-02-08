@@ -39,20 +39,20 @@ const SidebarContainer = styled.div`
 const ContentContainer = styled.div`
   flex: 1;
   display: grid;
-  grid-template-columns: 300px 1fr;  // 修改这里：增加侧边区域宽度到 300px
+  grid-template-columns: 300px 1fr;  // 这里控制侧边栏宽度
   min-width: 0;
   overflow: hidden;
-  gap: 32px;  // 保持列间距
+  gap: 32px;
 `;
 
 const SideAreaContainer = styled.div`
-  width: 100%;  // 占满分配的宽度
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 16px;
   margin-top: ${HEADER_HEIGHT}px;
-  overflow-y: auto;  // 允许侧边区域滚动
-  max-height: calc(100vh - ${HEADER_HEIGHT}px - 32px);  // 减去头部高度和padding
+  overflow-y: auto;
+  max-height: calc(100vh - ${HEADER_HEIGHT}px - 32px);
 `;
 
 const MainContainer = styled.div`

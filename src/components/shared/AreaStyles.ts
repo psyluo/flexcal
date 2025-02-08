@@ -1,5 +1,9 @@
 import styled from 'styled-components';
 
+interface EventListContainerProps {
+  $isOver?: boolean;
+}
+
 export const AreaContainer = styled.div.attrs({
   className: 'area-container'
 })`
@@ -28,7 +32,7 @@ export const AreaContent = styled.div.attrs({
   background-color: white;
   min-height: 200px;
   max-height: 400px;
-  padding: 12px;
+  padding: 0;
   flex: 1;
   overflow-y: auto;
   position: relative;
@@ -81,11 +85,13 @@ export const EventListContainer = styled.div.attrs({
   width: 100%;
   height: 100%;
   position: relative;
-  padding: 4px;
+  padding: 12px;
   background-color: ${props => props.$isOver ? 'rgba(0, 0, 0, 0.05)' : 'transparent'};
   transition: background-color 0.2s;
 
   &:hover {
     background-color: #f8f8f8;
   }
-`; 
+`;
+
+// ... (之前的其他样式定义) 
