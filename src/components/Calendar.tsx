@@ -20,39 +20,68 @@ import WeekSwitcher from './WeekSwitcher';
 import ThisWeekArea from './ThisWeekArea';
 import GeneralArea from './GeneralArea';
 import { Transform } from '@dnd-kit/utilities';
+import { Logo } from './shared/Logo';
+import { THEME } from './shared/AreaStyles';
 
 export const HEADER_HEIGHT = 50; // 日期行高度
+export const TIME_COLUMN_WIDTH = 50;  // 添加到文件顶部的常量区域
+
+const AppHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px;  // 减小上下padding (原来是10px)
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+`;
+
+const ProductName = styled.div`
+  font-size: 24px;  // 稍微减小字体 (原来是28px)
+  font-weight: 600;
+  font-family: 'Quicksand', 'Segoe UI', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #7c3aed 0%, #c026d3 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+`;
 
 const RootContainer = styled.div`
   display: flex;
+  flex-direction: column;
   height: 100vh;
-  padding: 16px;
-  gap: 16px;
-  overflow: hidden;  // 防止整体滚动
+  overflow: hidden;
+  background-color: white;
 `;
 
 const SidebarContainer = styled.div`
-  width: 60px;  // 与时间列宽度相同
+  width: ${TIME_COLUMN_WIDTH}px;
   flex-shrink: 0;
+  display: none;  // 隐藏左侧空白区域
 `;
 
 const ContentContainer = styled.div`
   flex: 1;
   display: grid;
-  grid-template-columns: 300px 1fr;  // 这里控制侧边栏宽度
+  grid-template-columns: 240px 1fr;  // 保持宽度不变
   min-width: 0;
   overflow: hidden;
-  gap: 32px;
+  gap: 16px;  // 保持间距不变
+  padding-left: 8px;  // 只添加少量左边距
 `;
 
 const SideAreaContainer = styled.div`
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-top: ${HEADER_HEIGHT}px;
+  gap: 12px;
+  margin-top: ${HEADER_HEIGHT - 24}px;  // 再向上移动8px (原来是 HEADER_HEIGHT - 16px)
   overflow-y: auto;
-  max-height: calc(100vh - ${HEADER_HEIGHT}px - 32px);
+  max-height: calc(100vh - ${HEADER_HEIGHT}px - 24px);
+  padding: 0;
 `;
 
 const MainContainer = styled.div`
@@ -74,24 +103,51 @@ const FixedHeader = styled.div`
 
 const HeaderRow = styled.div`
   display: grid;
-  grid-template-columns: 60px repeat(7, 1fr);
-  border-bottom: 1px solid #e0e0e0;
+  grid-template-columns: ${TIME_COLUMN_WIDTH}px repeat(7, 1fr);
+  border-bottom: 1px solid ${THEME.border};
+  background: linear-gradient(135deg, 
+    ${THEME.primaryDark} -20%, 
+    #4c1d95 120%);  // 使用更深的紫色，并扩大渐变范围
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
 
 const HeaderCell = styled.div`
   padding: 8px;
   text-align: center;
-  border-right: 1px solid #e0e0e0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);  // 降低边框透明度
   height: ${HEADER_HEIGHT}px;
+  box-sizing: border-box;
+  
+  &:first-child {
+    width: ${TIME_COLUMN_WIDTH}px;
+    text-align: right;
+  }
   
   .day-name {
-    font-weight: bold;
+    font-weight: 600;
+    color: ${THEME.textLight};
+    white-space: nowrap;
+    overflow: hidden;
+    letter-spacing: 0.5px;  // 增加字母间距提高可读性
   }
   
   .date {
     font-size: 12px;
-    color: #666;
+    color: rgba(255, 255, 255, 0.7);  // 降低透明度增加对比
+    white-space: nowrap;
+    overflow: hidden;
+    margin-top: 2px;  // 增加与日期名称的间距
   }
+`;
+
+const TimeCell = styled.div`
+  width: ${TIME_COLUMN_WIDTH}px;
+  padding: 8px;
+  text-align: right;
+  border-right: 1px solid #e0e0e0;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
 `;
 
 const ScrollableContent = styled.div`
@@ -106,6 +162,29 @@ const MainCalendarContainer = styled.div`
   flex: 1;
   min-width: 0;
   overflow: hidden;
+`;
+
+const MainContent = styled.div`
+  display: flex;
+  flex: 1;
+  padding: 0 16px 16px 0;  // 移除左边距
+  gap: 0;
+  overflow: hidden;
+`;
+
+const TimeGridContainer = styled.div`
+  display: grid;
+  grid-template-columns: ${TIME_COLUMN_WIDTH}px repeat(7, 1fr);
+  min-height: ${24 * HOUR_HEIGHT}px;
+  position: relative;
+`;
+
+const PoolContainer = styled.div`
+  display: grid;
+  grid-template-columns: ${TIME_COLUMN_WIDTH}px repeat(7, 1fr);
+  min-height: ${POOL_HEIGHT}px;
+  height: auto;
+  border-bottom: 1px solid #e0e0e0;
 `;
 
 const Calendar: React.FC = () => {
@@ -313,94 +392,100 @@ const Calendar: React.FC = () => {
 
   return (
     <RootContainer>
-      <DndContext 
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        modifiers={[adjustTransform, snapToGrid]}
-      >
-        <SidebarContainer>
-          {/* 删除这里的 WeekSwitcher */}
-        </SidebarContainer>
+      <AppHeader>
+        <Logo size={96} />
+        <ProductName>FlexCal</ProductName>
+      </AppHeader>
+      <MainContent>
+        <DndContext 
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          modifiers={[adjustTransform, snapToGrid]}
+        >
+          <SidebarContainer>
+            {/* 删除这里的 WeekSwitcher */}
+          </SidebarContainer>
 
-        <ContentContainer>
-          <SideAreaContainer>
-            <ThisWeekArea
-              events={events.filter(e => e.type === 'thisWeek')}
-              onEditEvent={handleEditEvent}
-              onCreateEvent={() => handleCreateEvent(undefined, undefined, 'thisWeek')}
-              onClick={() => handleCreateEvent(undefined, undefined, 'thisWeek')}
-            />
-            <GeneralArea
-              events={events.filter(e => e.type === 'general')}
-              onEditEvent={handleEditEvent}
-              onCreateEvent={() => handleCreateEvent(undefined, undefined, 'general')}
-              onClick={() => handleCreateEvent(undefined, undefined, 'general')}
-            />
-          </SideAreaContainer>
-
-          {/* 日历主体部分占用剩余6列 */}
-          <div style={{ gridColumn: '2' }}>
-            <MainContainer>
-              <WeekSwitcher
-                currentDate={currentDate}
-                onPrevWeek={handlePrevWeek}
-                onNextWeek={handleNextWeek}
+          <ContentContainer>
+            <SideAreaContainer>
+              <ThisWeekArea
+                events={events.filter(e => e.type === 'thisWeek')}
+                onEditEvent={handleEditEvent}
+                onCreateEvent={() => handleCreateEvent(undefined, undefined, 'thisWeek')}
+                onClick={() => handleCreateEvent(undefined, undefined, 'thisWeek')}
               />
-              <MainCalendarContainer>
-                <FixedHeader>
-                  <HeaderRow>
-                    <HeaderCell />
-                    {weekDays.map(date => (
-                      <HeaderCell key={date.toISOString()}>
-                        <div className="day-name">{format(date, 'EEE')}</div>
-                        <div className="date">{format(date, 'MM/dd')}</div>
-                      </HeaderCell>
-                    ))}
-                  </HeaderRow>
-                  <PoolRow 
-                    events={events.filter(e => e.type === 'pool')}
-                    dates={weekDays}
-                    onEditEvent={handleEditEvent}
-                    onCreateEvent={handleCreateEvent}
-                  />
-                </FixedHeader>
-                
-                <ScrollableContent>
-                  <WeekView 
-                    events={events.filter(e => e.type === 'scheduled')}
-                    dates={weekDays}
-                    onEditEvent={handleEditEvent}
-                    onCreateEvent={handleCreateEvent}
-                    onResizeEvent={handleEventResize}
-                  />
-                </ScrollableContent>
-              </MainCalendarContainer>
-            </MainContainer>
-          </div>
-        </ContentContainer>
+              <GeneralArea
+                events={events.filter(e => e.type === 'general')}
+                onEditEvent={handleEditEvent}
+                onCreateEvent={() => handleCreateEvent(undefined, undefined, 'general')}
+                onClick={() => handleCreateEvent(undefined, undefined, 'general')}
+              />
+            </SideAreaContainer>
 
-        <DragOverlay dropAnimation={null} modifiers={[snapToGrid]}>
-          {activeEvent && (
-            <EventItem 
-              key={activeEvent.id}
-              event={activeEvent}
-              isPool={activeEvent.type === 'pool'}
-              isDragging={true}
-              style={{
-                width: 'auto',
-                opacity: 0.8,
-                boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                // 为非 scheduled 类型的事件设置固定高度
-                height: activeEvent.type !== 'scheduled' ? `${HOUR_HEIGHT / 2}px` : undefined,
-                minHeight: activeEvent.type !== 'scheduled' ? `${HOUR_HEIGHT / 2}px` : undefined
-              }}
-            />
-          )}
-        </DragOverlay>
-      </DndContext>
+            {/* 日历主体部分占用剩余6列 */}
+            <div style={{ gridColumn: '2' }}>
+              <MainContainer>
+                <WeekSwitcher
+                  currentDate={currentDate}
+                  onPrevWeek={handlePrevWeek}
+                  onNextWeek={handleNextWeek}
+                />
+                <MainCalendarContainer>
+                  <FixedHeader>
+                    <HeaderRow>
+                      <HeaderCell />
+                      {weekDays.map(date => (
+                        <HeaderCell key={date.toISOString()}>
+                          <div className="day-name">{format(date, 'EEE')}</div>
+                          <div className="date">{format(date, 'MM/dd')}</div>
+                        </HeaderCell>
+                      ))}
+                    </HeaderRow>
+                    <PoolRow 
+                      events={events.filter(e => e.type === 'pool')}
+                      dates={weekDays}
+                      onEditEvent={handleEditEvent}
+                      onCreateEvent={handleCreateEvent}
+                    />
+                  </FixedHeader>
+                  
+                  <ScrollableContent>
+                    <WeekView 
+                      events={events.filter(e => e.type === 'scheduled')}
+                      dates={weekDays}
+                      onEditEvent={handleEditEvent}
+                      onCreateEvent={handleCreateEvent}
+                      onResizeEvent={handleEventResize}
+                    />
+                  </ScrollableContent>
+                </MainCalendarContainer>
+              </MainContainer>
+            </div>
+          </ContentContainer>
+
+          <DragOverlay dropAnimation={null} modifiers={[snapToGrid]}>
+            {activeEvent && (
+              <EventItem 
+                key={activeEvent.id}
+                event={activeEvent}
+                isPool={activeEvent.type === 'pool'}
+                isDragging={true}
+                style={{
+                  width: 'auto',
+                  opacity: 0.8,
+                  boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  // 为非 scheduled 类型的事件设置固定高度
+                  height: activeEvent.type !== 'scheduled' ? `${HOUR_HEIGHT / 2}px` : undefined,
+                  minHeight: activeEvent.type !== 'scheduled' ? `${HOUR_HEIGHT / 2}px` : undefined
+                }}
+              />
+            )}
+          </DragOverlay>
+        </DndContext>
+      </MainContent>
 
       {editingEvent && (
         <EventDialog

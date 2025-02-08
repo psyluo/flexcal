@@ -3,12 +3,14 @@ import styled from 'styled-components';
 import { useDraggable } from '@dnd-kit/core';
 import { CalendarEvent } from '../types';
 import { HOUR_HEIGHT, POOL_HEIGHT, HEADER_HEIGHT } from '../constants';
+import { THEME } from './shared/AreaStyles';
 
 interface EventItemContainerProps {
   $top?: number;
   $height?: number;
   $isPool?: boolean;
   $isDragging?: boolean;
+  type?: string;
 }
 
 const EditButtonWrapper = styled.div`
@@ -24,22 +26,18 @@ const EditButton = styled.button`
   height: 24px;
   border-radius: 4px;
   border: none;
-  background-color: #f5f5f5;
-  color: #1976d2;
+  background-color: rgba(255, 255, 255, 0.8);
+  color: ${THEME.primary};
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s, background-color 0.2s;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 
   &:hover {
-    background-color: #e0e0e0;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
+    background-color: white;
+    color: ${THEME.primaryLight};
   }
 `;
 
@@ -47,23 +45,36 @@ const EventItemContainer = styled.div<EventItemContainerProps>`
   position: ${props => props.$top !== undefined ? 'absolute' : 'relative'};
   top: ${props => props.$top !== undefined ? `${props.$top}px` : 'auto'};
   height: ${props => props.$height !== undefined ? `${props.$height}px` : 'auto'};
-  width: calc(100% - 16px);
-  margin: 0 8px;
-  padding: 4px 8px;
+  width: ${props => props.$isPool ? 'calc(100% - 2px)' : 'calc(100% - 16px)'};
+  margin: ${props => props.$isPool ? '0 1px' : '0 8px'};
+  padding: 10px 14px;
   box-sizing: border-box;
-  background-color: #e3f2fd;
-  border: 1px solid #1976d2;
+  background-color: ${props => 
+    props.type === 'scheduled' ? THEME.eventBg.purple :
+    props.type === 'pool' ? THEME.eventBg.orange :
+    THEME.eventBg.blue
+  };
+  border: 1px solid ${props => 
+    props.type === 'scheduled' ? THEME.eventBorder.purple :
+    props.type === 'pool' ? THEME.eventBorder.orange :
+    THEME.eventBorder.blue
+  };
   opacity: ${props => props.$isDragging ? 0.3 : 1};
   border-style: ${props => props.$isDragging ? 'dashed' : 'solid'};
-  box-shadow: ${props => props.$isDragging ? 'none' : '0 1px 3px rgba(0,0,0,0.12)'};
-  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
   cursor: pointer;
   user-select: none;
-  z-index: ${props => props.$isDragging ? 9999 : 1};
   transition: all 0.2s ease;
 
   &:hover {
-    background-color: #bbdefb;
+    background-color: ${props => 
+      props.type === 'scheduled' ? THEME.eventHover.purple :
+      props.type === 'pool' ? THEME.eventHover.orange :
+      THEME.eventHover.blue
+    };
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
   }
 
   &:hover ${EditButton} {
@@ -102,8 +113,21 @@ const DraggableArea = styled.div`
 const EventContent = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  pointer-events: auto;  // 确保内容可以点击
+  gap: 2px;
+  pointer-events: auto;
+
+  .event-title {
+    font-weight: 500;
+    color: ${THEME.textPrimary};
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  .event-time {
+    font-size: 11px;
+    color: ${THEME.textSecondary};
+    line-height: 1.2;
+  }
 `;
 
 const DraggableWrapper = styled.div<{ $isDragging: boolean; $isResizing: boolean }>`
@@ -236,6 +260,7 @@ const EventItem: React.FC<EventItemProps> = ({
       $isDragging={isDragging}
       $top={top}
       $height={height}
+      type={event.type}
       style={{
         ...style,
         position: isDragging ? 'absolute' : undefined,
@@ -259,8 +284,8 @@ const EventItem: React.FC<EventItemProps> = ({
         }}
       >
         <EventContent>
-          <div>{event.title}</div>
-          <div style={{ fontSize: '12px', color: '#666' }}>
+          <div className="event-title">{event.title}</div>
+          <div className="event-time">
             {event.startTime && `${event.startTime}, `}
             {event.duration && `${event.duration}min`}
           </div>

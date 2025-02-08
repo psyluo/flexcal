@@ -25,7 +25,7 @@ const GeneralArea: React.FC<GeneralAreaProps> = ({
   return (
     <AreaContainer className="general-area" onClick={onClick}>
       <AreaHeader>
-        <AreaTitle>General</AreaTitle>
+        <AreaTitle>No Time Constraint</AreaTitle>
         <AddButton onClick={(e) => {
           e.stopPropagation();
           onCreateEvent();

@@ -5,6 +5,7 @@ import { CalendarEvent } from '../types';
 import EventItem from './EventItem';
 import { useDroppable } from '@dnd-kit/core';
 import { POOL_HEIGHT } from '../constants';
+import { THEME } from './shared/AreaStyles';
 
 const PoolContainer = styled.div`
   display: grid;
@@ -12,6 +13,7 @@ const PoolContainer = styled.div`
   min-height: ${POOL_HEIGHT}px;
   height: auto;
   border-bottom: 1px solid #e0e0e0;
+  background-color: #fafaf8;
 `;
 
 const PoolLabel = styled.div`
@@ -26,6 +28,7 @@ const TimeCell = styled.div`
   border-right: 1px solid #e0e0e0;
   display: flex;
   align-items: center;
+  background-color: #fafaf8;
 `;
 
 const PoolTitle = styled.div`
@@ -41,11 +44,14 @@ const PoolCell = styled.div<{ $isOver?: boolean }>`
   gap: 8px;
   min-height: ${POOL_HEIGHT}px;
   height: auto;
-  background-color: ${props => props.$isOver ? 'rgba(0, 0, 0, 0.05)' : 'transparent'};
+  background-color: ${props => props.$isOver ? 
+    'rgba(234, 238, 233, 0.5)' : 
+    'transparent'
+  };
   transition: background-color 0.2s;
 
   &:hover {
-    background-color: #f8f8f8;
+    background-color: rgba(234, 238, 233, 0.3);
   }
 `;
 
@@ -60,7 +66,7 @@ const PoolRow: React.FC<PoolRowProps> = ({ events, dates, onEditEvent, onCreateE
   return (
     <PoolContainer>
       <TimeCell>
-        <PoolTitle>Day</PoolTitle>
+        <PoolTitle>This Day</PoolTitle>
       </TimeCell>
       {dates.map(date => {
         const { setNodeRef, isOver } = useDroppable({
