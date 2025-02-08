@@ -63,10 +63,15 @@ const DayColumn = styled.div`
   position: relative;
   border-right: 1px solid #e0e0e0;
   min-height: ${24 * HOUR_HEIGHT}px;
+  height: ${24 * HOUR_HEIGHT}px;
 `;
 
 const TimeBlockCell = styled.div<{ $isOver?: boolean }>`
   height: ${HOUR_HEIGHT / 2}px;
+  position: absolute;
+  top: ${props => props.top}px;
+  left: 0;
+  right: 0;
   background-color: ${props => props.$isOver ? 'rgba(0, 0, 0, 0.05)' : 'transparent'};
   border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
@@ -153,8 +158,8 @@ const WeekView: React.FC<WeekViewProps> = ({
                 }
               });
 
-              // 计算实际的像素位置
-              const top = block.totalMinutes * (HOUR_HEIGHT / 60);
+              // 修改位置计算方式
+              const top = block.hour * HOUR_HEIGHT + (block.minute / 60) * HOUR_HEIGHT;
 
               return (
                 <TimeBlockCell
@@ -174,10 +179,6 @@ const WeekView: React.FC<WeekViewProps> = ({
             {events
               .filter(event => event.date && isSameDay(new Date(event.date), date))
               .map(event => {
-                console.log('Rendering event:', {
-                  id: event.id,
-                  hasOnResize: !!onResizeEvent
-                });
                 return (
                   <EventItem 
                     key={event.id} 

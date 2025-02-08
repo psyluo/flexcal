@@ -191,64 +191,42 @@ const Calendar: React.FC = () => {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    
-    if (!over) {
-      setActiveEvent(null);
-      return;
-    }
+    if (!over) return;
 
-    const draggedEvent = active.data.current?.event as CalendarEvent & {
-      _dragMetadata?: {
-        originalStartTime: string;
-        originalTotalMinutes: number;
-      }
-    };
+    const draggedEvent = active.data.current?.event as CalendarEvent;
+    const targetData = over.data.current as { type: string; date?: Date; position?: TimeBlock };
 
-    if (draggedEvent) {
-      const newEvent = { ...draggedEvent };
-      delete newEvent._dragMetadata;
+    setEvents(prevEvents => {
+      return prevEvents.map(evt => {
+        if (evt.id !== draggedEvent.id) return evt;
 
-      // 获取目标区域类型
-      const targetType = over.data.current?.type as EventType;
-      
-      // 更新事件属性
-      newEvent.type = targetType;
-      
-      // 如果是拖到 pool 区域，清除时间相关信息
-      if (targetType === 'pool') {
-        newEvent.startTime = undefined;
-        newEvent.date = over.data.current?.date;  // 保留日期信息
-      } else if (targetType === 'scheduled') {
-        // scheduled 区域的处理保持不变
-        newEvent.date = over.data.current?.date;
-        if (over.data.current?.position) {
-          const totalMinutes = over.data.current.position.totalMinutes;
-          const hour = Math.floor(totalMinutes / 60);
-          const minute = Math.floor(totalMinutes % 60 / MINUTES_SNAP) * MINUTES_SNAP;
-          newEvent.startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        }
-      } else if (targetType === 'thisWeek' || targetType === 'general') {
-        // 清除位置相关的属性
-        newEvent.startTime = undefined;
-        newEvent.date = undefined;
-        delete newEvent._dragMetadata;
-        // 确保清除任何可能的 transform
-        if ('transform' in newEvent) {
-          delete (newEvent as any).transform;
-        }
-      }
-
-      // 更新事件
-      setEvents(prevEvents => {
-        const newEvents = prevEvents.map(evt => 
-          evt.id === draggedEvent.id ? newEvent : evt
-        );
+        const newEvent = { ...evt };
         
-        return newEvents;
+        // 更新事件类型
+        newEvent.type = targetData.type as EventType;
+
+        if (targetData.type === 'scheduled' && targetData.date) {
+          // 确保更新日期
+          newEvent.date = format(targetData.date, 'yyyy-MM-dd');
+          if (targetData.position) {
+            const { hour, minute } = targetData.position;
+            newEvent.startTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          }
+        } else if (targetData.type === 'pool') {
+          // pool 区域保留日期但清除时间
+          newEvent.date = targetData.date ? format(targetData.date, 'yyyy-MM-dd') : undefined;
+          newEvent.startTime = undefined;
+        } else {
+          // thisWeek 和 general 区域清除日期和时间
+          newEvent.date = undefined;
+          newEvent.startTime = undefined;
+        }
+        
+        return newEvent;
       });
-    }
-    
-    setActiveEvent(null);
+    });
+
+    setActiveEvent(null);  // 确保清除活动事件
   };
 
   const handleEditEvent = (event: CalendarEvent) => {
@@ -404,6 +382,7 @@ const Calendar: React.FC = () => {
         <DragOverlay dropAnimation={null} modifiers={[snapToGrid]}>
           {activeEvent && (
             <EventItem 
+              key={activeEvent.id}
               event={activeEvent}
               isPool={activeEvent.type === 'pool'}
               isDragging={true}
@@ -411,9 +390,12 @@ const Calendar: React.FC = () => {
                 width: 'auto',
                 opacity: 0.8,
                 boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
-                position: 'absolute',  // 使用绝对定位
+                position: 'absolute',
                 left: 0,
-                right: 0
+                right: 0,
+                // 为非 scheduled 类型的事件设置固定高度
+                height: activeEvent.type !== 'scheduled' ? `${HOUR_HEIGHT / 2}px` : undefined,
+                minHeight: activeEvent.type !== 'scheduled' ? `${HOUR_HEIGHT / 2}px` : undefined
               }}
             />
           )}

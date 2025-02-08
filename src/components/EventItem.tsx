@@ -44,46 +44,18 @@ const EditButton = styled.button`
 `;
 
 const EventItemContainer = styled.div<EventItemContainerProps>`
-  ${props => {
-    // 所有事件共用的基础样式
-    const baseStyles = `
-      width: calc(100% - 16px);  // 保持一致的宽度计算
-      margin: 0 8px;             // 两边 8px 外边距实现居中
-      padding: 4px 8px;
-      box-sizing: border-box;
-      background-color: #e3f2fd;
-      border: 1px solid #1976d2;
-      ${props.$isDragging ? `
-        opacity: 0.3;
-        border-style: dashed;
-      ` : `
-        opacity: 1;
-        border-style: solid;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-      `}
-    `;
-
-    if (props.$top !== undefined && props.$height !== undefined) {
-      // scheduled 事件特有的样式
-      return `
-        ${baseStyles}
-        position: absolute;
-        top: ${props.$top}px;
-        height: ${props.$height}px;
-        left: 0;
-        right: 0;
-      `;
-    } else {
-      // Pool、ThisWeek 和 General 事件的样式
-      return `
-        ${baseStyles}
-        position: relative;
-        min-height: ${HOUR_HEIGHT / 2}px;
-        margin: 4px 8px;  // 保持垂直间距
-      `;
-    }
-  }}
-
+  position: ${props => props.$top !== undefined ? 'absolute' : 'relative'};
+  top: ${props => props.$top !== undefined ? `${props.$top}px` : 'auto'};
+  height: ${props => props.$height !== undefined ? `${props.$height}px` : 'auto'};
+  width: calc(100% - 16px);
+  margin: 0 8px;
+  padding: 4px 8px;
+  box-sizing: border-box;
+  background-color: #e3f2fd;
+  border: 1px solid #1976d2;
+  opacity: ${props => props.$isDragging ? 0.3 : 1};
+  border-style: ${props => props.$isDragging ? 'dashed' : 'solid'};
+  box-shadow: ${props => props.$isDragging ? 'none' : '0 1px 3px rgba(0,0,0,0.12)'};
   border-radius: 4px;
   cursor: pointer;
   user-select: none;
@@ -140,8 +112,11 @@ const DraggableWrapper = styled.div<{ $isDragging: boolean; $isResizing: boolean
   left: 0;
   right: 0;
   bottom: 0;
-  pointer-events: ${props => props.$isResizing ? 'none' : 'auto'};  // 修正属性名
+  pointer-events: ${props => props.$isResizing ? 'none' : 'auto'};
   transform: ${props => props.$isDragging ? 'none' : 'translate3d(0, 0, 0)'};
+  cursor: move;
+  width: 100%;
+  height: 100%;
 `;
 
 interface EventItemProps {
@@ -180,20 +155,14 @@ const EventItem: React.FC<EventItemProps> = ({
   const initialDuration = useRef<number | undefined>(event.duration);
 
   const calculatePosition = () => {
-    // 只有 scheduled 类型的事件才需要计算位置
-    if (event.type !== 'scheduled') {
+    if (event.type !== 'scheduled' || isDragging) {
       return undefined;
-    }
-
-    // 拖拽时不计算位置
-    if (isDragging) {
-      return 0;
     }
 
     if (event.startTime) {
       const [hours, minutes] = event.startTime.split(':').map(Number);
-      const totalMinutes = hours * 60 + minutes;
-      return totalMinutes * (HOUR_HEIGHT / 60);
+      // 使用与 TimeBlockCell 相同的计算方式
+      return hours * HOUR_HEIGHT + (minutes / 60) * HOUR_HEIGHT;
     }
     return undefined;
   };
@@ -207,18 +176,9 @@ const EventItem: React.FC<EventItemProps> = ({
   };
 
   const handleResizeStart = (e: React.MouseEvent, type: 'top' | 'bottom') => {
-    console.log('=== Resize Start ===', {
-      type,
-      eventId: event.id,
-      initialY: e.clientY,
-      startTime: event.startTime,
-      duration: event.duration
-    });
-
     e.preventDefault();
     e.stopPropagation();
     
-    // 立即设置状态
     setIsResizing(true);
     setResizeType(type);
     initialY.current = e.clientY;
@@ -232,14 +192,6 @@ const EventItem: React.FC<EventItemProps> = ({
       const deltaY = e.clientY - initialY.current;
       const minutesChange = Math.round((deltaY / (HOUR_HEIGHT / 2))) * 30;
 
-      console.log('=== Mouse Move ===', {
-        deltaY,
-        minutesChange,
-        currentY: e.clientY,
-        initialY: initialY.current,
-        type
-      });
-
       if (type === 'top' && initialTime.current) {
         const [hours, minutes] = initialTime.current.split(':').map(Number);
         const totalMinutes = hours * 60 + minutes + minutesChange;
@@ -251,12 +203,6 @@ const EventItem: React.FC<EventItemProps> = ({
           const newStartTime = `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`;
           const newDuration = (initialDuration.current || 0) - minutesChange;
           
-          console.log('=== Top Resize ===', {
-            newStartTime,
-            newDuration,
-            minutesChange
-          });
-
           if (newDuration >= 30) {
             onResize?.(event, newStartTime, newDuration);
           }
@@ -273,7 +219,6 @@ const EventItem: React.FC<EventItemProps> = ({
       e.preventDefault();
       e.stopPropagation();
       
-      console.log('=== Resize End ===');
       setIsResizing(false);
       setResizeType(null);
       
@@ -281,7 +226,6 @@ const EventItem: React.FC<EventItemProps> = ({
       window.removeEventListener('mouseup', onMouseUp);
     }
 
-    // 使用 window 而不是 document
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
   };
@@ -294,8 +238,7 @@ const EventItem: React.FC<EventItemProps> = ({
       $height={height}
       style={{
         ...style,
-        position: isDragging ? 'absolute' : 'relative',
-        top: typeof top === 'number' ? `${top}px` : undefined
+        position: isDragging ? 'absolute' : undefined,
       }}
     >
       <DraggableWrapper
