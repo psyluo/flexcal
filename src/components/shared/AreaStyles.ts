@@ -112,7 +112,7 @@ export const AreaContent = styled.div.attrs({
   width: 100%;
 
   &:hover {
-    background-color: ${THEME.hover};
+    background-color: ${THEME.bgHover};
   }
 `;
 

@@ -1,11 +1,10 @@
 import React from 'react';
 import styled from 'styled-components';
-import { format, isSameDay } from 'date-fns';
+import { isSameDay } from 'date-fns';
 import { CalendarEvent } from '../types';
 import EventItem from './EventItem';
 import { useDroppable } from '@dnd-kit/core';
 import { POOL_HEIGHT } from '../constants';
-import { THEME } from './shared/AreaStyles';
 
 const PoolContainer = styled.div`
   display: grid;
@@ -14,13 +13,6 @@ const PoolContainer = styled.div`
   height: auto;
   border-bottom: 1px solid #e0e0e0;
   background-color: #fafaf8;
-`;
-
-const PoolLabel = styled.div`
-  padding: 8px;
-  border-right: 1px solid #e0e0e0;
-  display: flex;
-  align-items: center;
 `;
 
 const TimeCell = styled.div`
@@ -85,7 +77,7 @@ const PoolRow: React.FC<PoolRowProps> = ({ events, dates, onEditEvent, onCreateE
             onClick={() => onCreateEvent(date)}
           >
             {events
-              .filter(event => isSameDay(new Date(event.date), date))
+              .filter(event => event.date && isSameDay(new Date(event.date), date))
               .map(event => (
                 <EventItem 
                   key={event.id} 

@@ -233,6 +233,17 @@ const Calendar: React.FC = () => {
     };
   };
 
+  const adjustTransform: Modifier = ({ transform }) => {
+    if (!transform) return transform;
+    return {
+      ...transform,
+      x: transform.x,
+      y: transform.y,
+      scaleX: 1,
+      scaleY: 1
+    };
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) return;
@@ -339,22 +350,6 @@ const Calendar: React.FC = () => {
     setCurrentDate(prev => addWeeks(prev, 1));
   };
 
-  // 修改 transform 修改器
-  const adjustTransform = ({ transform }: { transform: Transform | null }) => {
-    if (!transform) return transform;
-
-    // 如果是 scheduled 类型的事件移动到 pool 区域
-    if (activeEvent?.type === 'scheduled') {
-      return {
-        ...transform,
-        // 不再强制 y = 0，允许垂直移动
-        y: Math.round(transform.y / (HOUR_HEIGHT / 2)) * (HOUR_HEIGHT / 2)  // 保持网格对齐
-      };
-    }
-
-    return transform;
-  };
-
   return (
     <RootContainer>
       <AppHeader>
@@ -365,7 +360,7 @@ const Calendar: React.FC = () => {
         <DndContext 
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
-          modifiers={[adjustTransform, snapToGrid]}
+          modifiers={[adjustTransform]}
         >
           <SidebarContainer>
             {/* 删除这里的 WeekSwitcher */}
